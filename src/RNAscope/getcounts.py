@@ -99,7 +99,7 @@ def getcounts(inputdir: str, outputdir: str, fiji_version='native'):
     outputDir = os.path.abspath(outputdir)
 
     # Ensure input and output are properly defined
-    if inputDir is not '' and outputDir is not '':
+    if inputDir != '' and outputDir != '':
         imagepaths = [y for x in os.walk(inputDir) for y in glob(os.path.join(x[0], '*.[Tt][Ii][Ff]'))]
 
         start = time.perf_counter()
