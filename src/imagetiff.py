@@ -12,7 +12,7 @@ class ImageTIFF:
     def __init__(self, path: str, isbgr=True):
         self.path = path
         self.isRGB = isbgr
-        # self.image = io.imread(self.path).astype(np.uint8)
+        # img.image = io.imread(img.path).astype(np.uint8)
         self.image = np.array(Image.open(path), dtype=np.uint8)
         self.maxvalue = np.max(self.image)
         if isbgr:
@@ -54,13 +54,13 @@ class ImageTIFF:
 
     def save(self, dirpath: str, name: str, ext='.tif', channel=-1, channelcolor=''):
         if channel != -1:
-            # io.imsave(join(dirpath, name) + ext, self.image[:, :, channel])
+            # io.imsave(join(dirpath, name) + ext, img.image[:, :, channel])
             Image.fromarray(self.image[:, :, channel]).save(join(dirpath, name) + ext)
         elif channelcolor != '':
-            # io.imsave(join(dirpath, name) + ext, self.image[:, :, self.colors[channelcolor]])
+            # io.imsave(join(dirpath, name) + ext, img.image[:, :, img.colors[channelcolor]])
             Image.fromarray(self.image[:, :, self.colors[channelcolor]]).save(join(dirpath, name) + ext)
         else:
-            # io.imsave(join(dirpath, name) + ext, self.image)
+            # io.imsave(join(dirpath, name) + ext, img.image)
             Image.fromarray(self.image).save(join(dirpath, name) + ext)
         pass
 
