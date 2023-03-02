@@ -63,7 +63,7 @@ close("Results");
 dot_area_ratio = 1.0 * count / total_area;
 area_ratio = 1.0 * total_area / area;
 
-results = filename + "\t" + count + "\t" + area + "\t" + dot_area_ratio + "\t" + area_ratio;
+results = filename + "\t" + count + "\t" + total_area "\t" + area + "\t" + dot_area_ratio + "\t" + area_ratio;
 """
 
 
@@ -98,49 +98,43 @@ def getcounts(inputdir: str, outputdir: str, fiji_version='native'):
     inputDir = os.path.abspath(inputdir)
     outputDir = os.path.abspath(outputdir)
 
-    imagepaths = [y for x in os.walk(inputDir) for y in glob(os.path.join(x[0], '*.[Tt][Ii][Ff]'))]
+    # Ensure input and output are properly defined
+    if inputDir is not '' and outputDir is not '':
+        imagepaths = [y for x in os.walk(inputDir) for y in glob(os.path.join(x[0], '*.[Tt][Ii][Ff]'))]
 
-    start = time.perf_counter()
+        start = time.perf_counter()
 
-    # results = processimage_test('1\t1\tC://')
+        results = []
+        fiji = r'E:\Aaron Y\Fiji.app' if fiji_version == 'native' else f'sc.fiji:fiji:{fiji_version}'
+        ij = imagej.init(fiji, mode='interactive')
+        # ij = imagej.init('sc.fiji:fiji:2.5.0', mode='interactive')
+        for n, imagepath in enumerate(imagepaths):
+            total = len(imagepaths)
+            print(f'Now processing {n + 1}/{total}: {os.path.basename(imagepath)}')
 
-    # # pool = Pool(processes=max(len(psutil.Process().cpu_affinity()) - 1, 1))
-    # pool = Pool(processes=4)
-    # results = pool.imap(processimage,
-    #                     [f'{i+1}\t{len(imagepaths)}\t{imagepath}' for i, imagepath in enumerate(imagepaths)])
-    # # results = pool.imap(processimage_test, [f'{i}\t{len(imagepaths)}\t{imagepath}' for i, imagepath in enumerate(imagepaths)])
-    # pool.close()
-    # pool.join()
+            start_time = time.perf_counter()
+            args = {'imagepath': os.path.abspath(imagepath)}
+            result = ij.py.run_macro(macro, args)
+            results.append(str(result.getOutput('results')).split('\t'))
+            print(
+                f'{n + 1}/{total}: {os.path.basename(imagepath)} was processed in {time.perf_counter() - start_time: .2f} seconds...')
+            pass
 
-    results = []
-    fiji = r'E:\Aaron Y\Fiji.app' if fiji_version == 'native' else f'sc.fiji:fiji:{fiji_version}'
-    ij = imagej.init(fiji, mode='interactive')
-    # ij = imagej.init('sc.fiji:fiji:2.5.0', mode='interactive')
-    for n, imagepath in enumerate(imagepaths):
-        total = len(imagepaths)
-        print(f'Now processing {n+1}/{total}: {os.path.basename(imagepath)}')
+        with open(os.path.join(outputDir, 'DotCounts.csv'), 'w', encoding='utf-8', newline='\n') as f:
+            writer = csv.writer(f, delimiter='\t')
+            header = ['Image Name',
+                      'Dot Maxima',
+                      'Tissue Area (um^2)',
+                      'Total Image Area (um^2)',
+                      'Dots per um^2',
+                      'Identified area to image size ratio (for QC)'
+                      ]
+            writer.writerow(header)
+            writer.writerows(results)
+            f.close()
+            pass
 
-        start_time = time.perf_counter()
-        args = {'imagepath': os.path.abspath(imagepath)}
-        result = ij.py.run_macro(macro, args)
-        results.append(str(result.getOutput('results')).split('\t'))
-        print(
-            f'{n+1}/{total}: {os.path.basename(imagepath)} was processed in {time.perf_counter() - start_time: .2f} seconds...')
+        print(f'Processes finished in {time.perf_counter() - start: .2f} seconds.')
         pass
-
-    with open(os.path.join(outputDir, 'DotCounts.csv'), 'w', encoding='utf-8', newline='\n') as f:
-        writer = csv.writer(f, delimiter='\t')
-        header = ['Image Name',
-                  'Dot Maxima',
-                  'Area (um^2)',
-                  'Dots per um^2',
-                  'Identified area to image size ratio (for QC)'
-                  ]
-        writer.writerow(header)
-        writer.writerows(results)
-        f.close()
-        pass
-
-    print(f'Processes finished in {time.perf_counter() - start: .2f} seconds.')
     pass
 
