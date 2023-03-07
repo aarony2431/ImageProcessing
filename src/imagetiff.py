@@ -85,26 +85,20 @@ class ImageTIFF:
     def save(self, dirpath: str, name: str, ext='.tif', channel=-1, channelcolor=''):
         if not self.tile:
             if channel != -1:
-                # io.imsave(join(dirpath, name) + ext, img.image[:, :, channel])
                 Image.fromarray(self.image[:, :, channel]).save(join(dirpath, name) + ext)
             elif channelcolor != '':
-                # io.imsave(join(dirpath, name) + ext, img.image[:, :, img.colors[channelcolor]])
                 Image.fromarray(self.image[:, :, self.colors[channelcolor]]).save(join(dirpath, name) + ext)
             else:
-                # io.imsave(join(dirpath, name) + ext, img.image)
                 Image.fromarray(self.image).save(join(dirpath, name) + ext)
             pass
         else:
             if channel != -1:
-                # io.imsave(join(dirpath, name) + ext, img.image[:, :, channel])
                 final_array = np.concatenate(np.concatenate(self.image[:, :, channel], axis=2), axis=0)
                 Image.fromarray(final_array).save(join(dirpath, name) + ext)
             elif channelcolor != '':
-                # io.imsave(join(dirpath, name) + ext, img.image[:, :, img.colors[channelcolor]])
                 final_array = np.concatenate(np.concatenate(self.image[:, :, self.colors[channelcolor]], axis=2), axis=0)
                 Image.fromarray(final_array).save(join(dirpath, name) + ext)
             else:
-                # io.imsave(join(dirpath, name) + ext, img.image)
                 final_array = np.concatenate(np.concatenate(self.image, axis=2), axis=0)
                 Image.fromarray(final_array).save(join(dirpath, name) + ext)
             pass
