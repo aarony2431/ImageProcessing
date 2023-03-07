@@ -54,20 +54,19 @@ class ImageTIFF:
         return self.image
 
     def getChannel(self, channelcolor='', channelnumber=-1):
-        if not self.tile:
-            if channelnumber != -1:
-                return self.image[:, :, channelnumber]
-            elif channelcolor != '':
-                return self.image[:, :, self.colors[channelcolor]]
-            else:
-                raise NotImplementedError('Please specify a value for \'channelcolor\' or \'channelnumber\'')
+        # The number of dimensions of the tiles (excluding the channel dimension)
+        n = self.image.ndim - 1
+
+        # Select the slice of the old_tiles array to replace
+        if channelnumber != -1:
+            channel = channelnumber
+        elif channelcolor != '':
+            channel = self.colors[channelcolor]
         else:
-            if channelnumber != -1:
-                return np.asarray([tile[:, :, channelnumber] for tile in self.image])
-            elif channelcolor != '':
-                return np.asarray([tile[:, :, self.colors[channelcolor]] for tile in self.image])
-            else:
-                raise NotImplementedError('Please specify a value for \'channelcolor\' or \'channelnumber\'')
+            raise NotImplementedError('Please specify a value for \'channelcolor\' or \'channelnumber\'')
+        target_slice = [slice(None)] * n + [channel]
+        return self.image[target_slice]
+
 
     # returns the shape in the order (x, y, z)
     def shape(self):
@@ -82,25 +81,27 @@ class ImageTIFF:
             cv.waitKey(0)
         pass
 
+    def collapse(self, channel=-1, channelcolor=''):
+        if channel != -1:
+            final_array = np.concatenate(np.concatenate(self.getChannel(channelnumber=channel), axis=2), axis=0)
+        elif channelcolor != '':
+            final_array = np.concatenate(np.concatenate(self.getChannel(channelcolor=channelcolor), axis=2), axis=0)
+        else:
+            final_array = np.concatenate(np.concatenate(self.image, axis=2), axis=0)
+        return final_array
+
     def save(self, dirpath: str, name: str, ext='.tif', channel=-1, channelcolor=''):
         if not self.tile:
             if channel != -1:
-                Image.fromarray(self.image[:, :, channel]).save(join(dirpath, name) + ext)
+                Image.fromarray(self.getChannel(channelnumber=channel)).save(join(dirpath, name) + ext)
             elif channelcolor != '':
-                Image.fromarray(self.image[:, :, self.colors[channelcolor]]).save(join(dirpath, name) + ext)
+                Image.fromarray(self.getChannel(channelcolor=channelcolor)).save(join(dirpath, name) + ext)
             else:
                 Image.fromarray(self.image).save(join(dirpath, name) + ext)
             pass
         else:
-            if channel != -1:
-                final_array = np.concatenate(np.concatenate(self.image[:, :, channel], axis=2), axis=0)
-                Image.fromarray(final_array).save(join(dirpath, name) + ext)
-            elif channelcolor != '':
-                final_array = np.concatenate(np.concatenate(self.image[:, :, self.colors[channelcolor]], axis=2), axis=0)
-                Image.fromarray(final_array).save(join(dirpath, name) + ext)
-            else:
-                final_array = np.concatenate(np.concatenate(self.image, axis=2), axis=0)
-                Image.fromarray(final_array).save(join(dirpath, name) + ext)
+            final_array = self.collapse(channel=channel, channelcolor=channelcolor)
+            Image.fromarray(final_array).save(join(dirpath, name) + ext)
             pass
 
     def invert(self):
