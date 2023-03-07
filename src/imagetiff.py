@@ -9,11 +9,33 @@ Image.MAX_IMAGE_PIXELS = None
 
 
 class ImageTIFF:
-    def __init__(self, path: str, isbgr=True):
+    def __init__(self, path: str, isbgr=True, tile=False):
         self.path = path
         self.isRGB = isbgr
-        # img.image = io.imread(img.path).astype(np.uint8)
-        self.image = np.array(Image.open(path), dtype=np.uint8)
+        self.tile = tile
+        if not tile:
+            with Image.open(path) as img:
+                self.image = np.array(img, dtype=np.uint8)
+                pass
+            pass
+        else:
+            with Image.open(path) as img:
+                # Define the tile size
+                tile_size = (256, 256)
+
+                # Get the size of the input image
+                img_size = img.size
+
+                # Calculate the number of tiles in each dimension
+                num_tiles = (img_size[0] // tile_size[0], img_size[1] // tile_size[1])
+
+                # Split the image into tiles using numpy
+                input_array = np.array(img)
+                self.image = np.array([np.array(
+                    [input_array[j * tile_size[1]:(j + 1) * tile_size[1], i * tile_size[0]:(i + 1) * tile_size[0], :]
+                     for i in range(num_tiles[0])]) for j in range(num_tiles[1])])
+
+            pass
         self.maxvalue = np.max(self.image)
         if isbgr:
             self.colors = {'red': 2,
@@ -32,12 +54,20 @@ class ImageTIFF:
         return self.image
 
     def getChannel(self, channelcolor='', channelnumber=-1):
-        if channelnumber != -1:
-            return self.image[:, :, channelnumber]
-        elif channelcolor != '':
-            return self.image[:, :, self.colors[channelcolor]]
+        if not self.tile:
+            if channelnumber != -1:
+                return self.image[:, :, channelnumber]
+            elif channelcolor != '':
+                return self.image[:, :, self.colors[channelcolor]]
+            else:
+                raise NotImplementedError('Please specify a value for \'channelcolor\' or \'channelnumber\'')
         else:
-            raise NotImplementedError('Please specify a value for \'channelcolor\' or \'channelnumber\'')
+            if channelnumber != -1:
+                return np.array([tile[:, :, channelnumber] for tile in self.image])
+            elif channelcolor != '':
+                return np.array([tile[:, :, self.colors[channelcolor]] for tile in self.image])
+            else:
+                raise NotImplementedError('Please specify a value for \'channelcolor\' or \'channelnumber\'')
 
     # returns the shape in the order (x, y, z)
     def shape(self):
@@ -53,16 +83,31 @@ class ImageTIFF:
         pass
 
     def save(self, dirpath: str, name: str, ext='.tif', channel=-1, channelcolor=''):
-        if channel != -1:
-            # io.imsave(join(dirpath, name) + ext, img.image[:, :, channel])
-            Image.fromarray(self.image[:, :, channel]).save(join(dirpath, name) + ext)
-        elif channelcolor != '':
-            # io.imsave(join(dirpath, name) + ext, img.image[:, :, img.colors[channelcolor]])
-            Image.fromarray(self.image[:, :, self.colors[channelcolor]]).save(join(dirpath, name) + ext)
+        if not self.tile:
+            if channel != -1:
+                # io.imsave(join(dirpath, name) + ext, img.image[:, :, channel])
+                Image.fromarray(self.image[:, :, channel]).save(join(dirpath, name) + ext)
+            elif channelcolor != '':
+                # io.imsave(join(dirpath, name) + ext, img.image[:, :, img.colors[channelcolor]])
+                Image.fromarray(self.image[:, :, self.colors[channelcolor]]).save(join(dirpath, name) + ext)
+            else:
+                # io.imsave(join(dirpath, name) + ext, img.image)
+                Image.fromarray(self.image).save(join(dirpath, name) + ext)
+            pass
         else:
-            # io.imsave(join(dirpath, name) + ext, img.image)
-            Image.fromarray(self.image).save(join(dirpath, name) + ext)
-        pass
+            if channel != -1:
+                # io.imsave(join(dirpath, name) + ext, img.image[:, :, channel])
+                final_array = np.concatenate(np.concatenate(self.image[:, :, channel], axis=2), axis=0)
+                Image.fromarray(final_array).save(join(dirpath, name) + ext)
+            elif channelcolor != '':
+                # io.imsave(join(dirpath, name) + ext, img.image[:, :, img.colors[channelcolor]])
+                final_array = np.concatenate(np.concatenate(self.image[:, :, self.colors[channelcolor]], axis=2), axis=0)
+                Image.fromarray(final_array).save(join(dirpath, name) + ext)
+            else:
+                # io.imsave(join(dirpath, name) + ext, img.image)
+                final_array = np.concatenate(np.concatenate(self.image, axis=2), axis=0)
+                Image.fromarray(final_array).save(join(dirpath, name) + ext)
+            pass
 
     def invert(self):
         base = np.full(self.shape(), 255, dtype='uint8')
@@ -70,7 +115,7 @@ class ImageTIFF:
         pass
 
     def saveRGB(self, dirpath: str, name: str, ext='.tif'):
-        Image.fromarray(self.image).save(join(dirpath, name) + ext)
+        self.save(dirpath, name, ext=ext)
         pass
 
     pass
