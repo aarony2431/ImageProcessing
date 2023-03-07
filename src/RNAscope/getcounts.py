@@ -1,10 +1,14 @@
 import csv
+import logging
 import os.path
+from contextlib import redirect_stdout, redirect_stderr
 from glob import glob
 
 import imagej
 import scyjava
 import time
+
+from tqdm import tqdm
 
 # this code runs using the basic pyimagej environment created using
 #   conda install mamba -n base -c conda-forge
@@ -19,6 +23,7 @@ macro = """
 #@output String results
 
 filename = File.getName(imagepath);
+filedir = File.getDirectory(imagepath);
 
 args = "open=[" + imagepath + "] autoscale color_mode=Default view=Hyperstack stack_order=XYCZT";
 run("Bio-Formats Importer", args);
@@ -63,35 +68,8 @@ close("Results");
 dot_area_ratio = 1.0 * count / total_area;
 area_ratio = 1.0 * total_area / area;
 
-results = filename + "\t" + count + "\t" + total_area "\t" + area + "\t" + dot_area_ratio + "\t" + area_ratio;
+results = filename + "\t" + filedir + "\t" + count + "\t" + total_area "\t" + area + "\t" + dot_area_ratio + "\t" + area_ratio;
 """
-
-
-# def processimage(image_path: str):
-#     start_time = time.perf_counter()
-#     [n, total, imagepath] = image_path.split('\t')
-#     print(f'Now processing {n}/{total}: {os.path.basename(imagepath)}')
-#     ij = imagej.init(r'E:\Aaron Y\Fiji.app', mode='interactive')
-#     # ij = imagej.init('sc.fiji:fiji:2.5.0')
-#     args = {'imagepath': os.path.abspath(imagepath)}
-#     result = ij.py.run_macro(macro, args)
-#     print(
-#         f'{n}/{total}: {os.path.basename(imagepath)} was processed in {time.perf_counter() - start_time: .2f} seconds...')
-#     return str(result.getOutput('results')).split('\t')
-#
-#
-# def processimage_test(image_path: str):
-#     start_time = time.perf_counter()
-#     path = r"E:\Aaron Y\Data\Orbit H&E\OG tiff files annotations - output\1003_Lung_Threshold_red.tif"
-#     [n, total, imagepath] = image_path.split('\t')
-#     print(f'Now processing {n}/{total}: {os.path.basename(imagepath)}')
-#     ij = imagej.init(r'E:\Aaron Y\Fiji.app', mode='interactive')
-#     # ij = imagej.init('sc.fiji:fiji:2.5.0')
-#     args = {'imagepath': os.path.abspath(path)}
-#     result = ij.py.run_macro(macro, args)
-#     print(
-#         f'{n}/{total}: {os.path.basename(imagepath)} was processed in {time.perf_counter() - start_time: .2f} seconds...')
-#     return str(result.getOutput('results')).split('\t')
 
 
 def getcounts(inputdir: str, outputdir: str, fiji_version='native'):
@@ -100,7 +78,10 @@ def getcounts(inputdir: str, outputdir: str, fiji_version='native'):
 
     # Ensure input and output are properly defined
     if inputDir != '' and outputDir != '':
-        imagepaths = [y for x in os.walk(inputDir) for y in glob(os.path.join(x[0], '*.[Tt][Ii][Ff]'))]
+        imagepaths = [image
+                      for root, dirs, files in os.walk(inputDir)
+                      for image in glob(os.path.join(root, '*.[Tt][Ii][Ff]'))
+                      if not os.path.islink(image)]
 
         start = time.perf_counter()
 
@@ -108,21 +89,24 @@ def getcounts(inputdir: str, outputdir: str, fiji_version='native'):
         fiji = r'E:\Aaron Y\Fiji.app' if fiji_version == 'native' else f'sc.fiji:fiji:{fiji_version}'
         ij = imagej.init(fiji, mode='interactive')
         # ij = imagej.init('sc.fiji:fiji:2.5.0', mode='interactive')
-        for n, imagepath in enumerate(imagepaths):
-            total = len(imagepaths)
-            print(f'Now processing {n + 1}/{total}: {os.path.basename(imagepath)}')
+        for imagepath in tqdm(imagepaths):
 
-            start_time = time.perf_counter()
             args = {'imagepath': os.path.abspath(imagepath)}
-            result = ij.py.run_macro(macro, args)
+            try:
+                logging.basicConfig(level=logging.ERROR)
+                with redirect_stdout(os.devnull), redirect_stderr(os.devnull):
+                    result = ij.py.run_macro(macro, args)
+            except Exception as e:
+                print(e)
             results.append(str(result.getOutput('results')).split('\t'))
             print(
-                f'{n + 1}/{total}: {os.path.basename(imagepath)} was processed in {time.perf_counter() - start_time: .2f} seconds...')
+                f'{os.path.basename(imagepath)} was processed')
             pass
 
         with open(os.path.join(outputDir, 'DotCounts.csv'), 'w', encoding='utf-8', newline='\n') as f:
             writer = csv.writer(f, delimiter='\t')
             header = ['Image Name',
+                      'Directory Path',
                       'Dot Maxima',
                       'Tissue Area (um^2)',
                       'Total Image Area (um^2)',
