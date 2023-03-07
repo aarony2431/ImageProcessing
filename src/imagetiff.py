@@ -63,9 +63,9 @@ class ImageTIFF:
                 raise NotImplementedError('Please specify a value for \'channelcolor\' or \'channelnumber\'')
         else:
             if channelnumber != -1:
-                return np.array([tile[:, :, channelnumber] for tile in self.image])
+                return np.asarray([tile[:, :, channelnumber] for tile in self.image])
             elif channelcolor != '':
-                return np.array([tile[:, :, self.colors[channelcolor]] for tile in self.image])
+                return np.asarray([tile[:, :, self.colors[channelcolor]] for tile in self.image])
             else:
                 raise NotImplementedError('Please specify a value for \'channelcolor\' or \'channelnumber\'')
 
