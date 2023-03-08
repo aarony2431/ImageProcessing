@@ -53,7 +53,7 @@ class ImageTIFF:
     def referenceArray(self):
         return self.image
 
-    def getChannel(self, channel: int | str, channelcolor='', channelnumber=-1):
+    def getChannel(self, channel: int | str):
         # The number of dimensions of the tiles (excluding the channel dimension)
         n = self.image.ndim - 1
 
