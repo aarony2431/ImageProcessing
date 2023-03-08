@@ -1,2 +1,3 @@
-from imagetiff import *
-from subtractmedian import *
+from _imagetiff import *
+from _subtractmedian import *
+from _processimage import *
