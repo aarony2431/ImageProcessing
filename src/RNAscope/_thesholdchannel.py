@@ -73,9 +73,9 @@ def thresholdchannel(img: ImageTIFF, mainchannel='red', C2channel='green', C3cha
         return np.logical_and(np.logical_not(isnotred_greencorrection(r, g, b, red_mask)),
                               np.logical_or(isred(r, g, b, red_mask), isred_bluecorrection(r, g, b, red_mask)))
 
-    channel = img.getChannel(channelcolor=mainchannel)
-    channel2 = img.getChannel(channelcolor=C2channel)
-    channel3 = img.getChannel(channelcolor=C3channel)
+    channel = img.getChannel(mainchannel)
+    channel2 = img.getChannel(C2channel)
+    channel3 = img.getChannel(C3channel)
     # Generate the new red image/tiles data
     if whitebackground:
         new_red = np.where(redish(channel, channel2, channel3),
