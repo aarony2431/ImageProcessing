@@ -1,6 +1,11 @@
+import time
+from functools import partial
+from multiprocessing import Pool
 from os import makedirs, sep
 from os.path import *
 from typing import Callable
+
+from tqdm import tqdm
 
 from . import ImageTIFF
 
@@ -37,4 +42,29 @@ def processimage(func: Callable, imagepath: str, isbgr=False, out=None, hierarch
         # print(f'{n}/{total}: \'{newfile}\' already exists in \'{out}\'!')
         print(f'\'{newfile}\' already exists in \'{out}\'!')
         pass
+    pass
+
+
+def processimages_loop(func: Callable, imagepaths: list[str], **kwargs):
+    # Loop through each image with progress bar and perform function
+    for imagepath in tqdm(imagepaths, unit='img'):
+        try:
+            processimage(func, imagepath, **kwargs)
+        except Exception as e:
+            print(imagepath, e)
+        pass
+    pass
+
+
+def processimages_pool(func: Callable, imagepaths: list[str], processes=2, chunksize=None, aSync=False, **kwargs):
+    # Create worker pools and process images with progress bar
+    with Pool(processes=max(processes, 1)) as pool:
+        if aSync:
+            pool.starmap_async(processimage,
+                               [(partial(func, **kwargs), imagepath) for imagepath in tqdm(imagepaths, unit='img')],
+                               chunksize=chunksize)
+        else:
+            pool.starmap(processimage,
+                         [(partial(func, **kwargs), imagepath) for imagepath in tqdm(imagepaths, unit='img')],
+                         chunksize=chunksize)
     pass
