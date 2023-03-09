@@ -9,11 +9,13 @@ Image.MAX_IMAGE_PIXELS = None
 
 
 class ImageTIFF:
-    def __init__(self, path: str, isbgr=True, tile=False):
+    def __init__(self, path: str, isbgr=True, tilesize: int = 0):
         self.path = path
         self.isRGB = isbgr
-        self.tile = tile
-        if not tile:
+        self.tile = tilesize == 0
+        if tilesize < 0:
+            raise ValueError('\'tilesize\' must be an non-negative whole number!')
+        if not self.tile:
             with Image.open(path) as img:
                 self.image = np.array(img, dtype=np.uint8)
                 pass
@@ -21,19 +23,19 @@ class ImageTIFF:
         else:
             with Image.open(path) as img:
                 # Define the tile size
-                tile_size = (256, 256)
+                tile_size = (tilesize, tilesize)
 
                 # Get the size of the input image
                 img_size = img.size
 
                 # Calculate the number of tiles in each dimension
-                num_tiles = (img_size[0] // tile_size[0], img_size[1] // tile_size[1])
+                self.num_tiles = (img_size[0] // tile_size[0], img_size[1] // tile_size[1])
 
                 # Split the image into tiles using numpy
                 input_array = np.array(img)
                 self.image = np.array([np.array(
                     [input_array[j * tile_size[1]:(j + 1) * tile_size[1], i * tile_size[0]:(i + 1) * tile_size[0], :]
-                     for i in range(num_tiles[0])]) for j in range(num_tiles[1])])
+                     for i in range(self.num_tiles[0])]) for j in range(self.num_tiles[1])])
 
             pass
         self.maxvalue = np.max(self.image)

@@ -1,12 +1,16 @@
+import itertools
+
 import numpy as np
 
 from .. import ImageTIFF
 
 
-def thresholdchannel(img: ImageTIFF, mainchannel='red', C2channel='green', C3channel='blue', whitebackground=True):
+def thresholdchannel(img: ImageTIFF, mainchannel='red', C2channel='green', C3channel='blue', whitebackground=True,
+                     loop=True):
     """
     Thresholds the corresponding channel color and returns an image with the thresholded channel above background
     according to whitebackground. Performs the operation faster due to NumPy's broadcasting features.
+    :param loop: If True, analyze tiles using for loops. If False, analyze using NumPy's broadcasting features.
     :param img:
     :param mainchannel: usually red
     :param C2channel: usually green
@@ -73,28 +77,70 @@ def thresholdchannel(img: ImageTIFF, mainchannel='red', C2channel='green', C3cha
         return np.logical_and(np.logical_not(isnotred_greencorrection(r, g, b, red_mask)),
                               np.logical_or(isred(r, g, b, red_mask), isred_bluecorrection(r, g, b, red_mask)))
 
-    channel = img.getChannel(mainchannel)
-    channel2 = img.getChannel(C2channel)
-    channel3 = img.getChannel(C3channel)
-    # Generate the new red image/tiles data
-    if whitebackground:
-        new_red = np.where(redish(channel, channel2, channel3),
-                           np.uint8(255) - channel,
-                           np.uint8(0)).astype(np.uint8)
-        pass
+    if loop:
+        # Create iterable of all combinations of [0, 1,..., x-1] and [0, 1,..., y-1]
+        x, y = img.num_tiles
+        indices = itertools.product(range(x), range(y))
+
+        # Loop through each index
+        if whitebackground:
+            for index in indices:
+                # Get initial channels data
+                old_channel = img.getChannel(mainchannel)[index[0], index[1], ...]
+                channel2 = img.getChannel(C2channel)[index[0], index[1], ...]
+                channel3 = img.getChannel(C3channel)[index[0], index[1], ...]
+
+                # Generate the new red image/tiles data
+                new_channel = np.where(redish(old_channel, channel2, channel3),
+                                       np.uint8(255) - old_channel,
+                                       np.uint8(0)).astype(np.uint8)
+
+                # Assign new channels data
+                img.image[index[0], index[1], ...] = new_channel
+                pass
+            pass
+        else:
+            for index in indices:
+                # Get initial channels data
+                old_channel = img.getChannel(mainchannel)[index[0], index[1], ...]
+                channel2 = img.getChannel(C2channel)[index[0], index[1], ...]
+                channel3 = img.getChannel(C3channel)[index[0], index[1], ...]
+
+                # Generate the new red image/tiles data
+
+                new_channel = np.where(redish(old_channel, channel2, channel3),
+                                       old_channel,
+                                       np.uint8(0)).astype(np.uint8)
+
+                # Assign new channels data
+                img.image[index[0], index[1], ...] = new_channel
+                pass
+            pass
     else:
-        new_red = np.where(redish(channel, channel2, channel3),
-                           channel,
-                           np.uint8(0)).astype(np.uint8)
+        # Get initial channels data
+        channel = img.getChannel(mainchannel)
+        channel2 = img.getChannel(C2channel)
+        channel3 = img.getChannel(C3channel)
+        # Generate the new red image/tiles data
+        if whitebackground:
+            new_channel = np.where(redish(channel, channel2, channel3),
+                                   np.uint8(255) - channel,
+                                   np.uint8(0)).astype(np.uint8)
+            pass
+        else:
+            new_channel = np.where(redish(channel, channel2, channel3),
+                                   channel,
+                                   np.uint8(0)).astype(np.uint8)
+            pass
+
+        # The number of dimensions of the tiles (excluding the channel dimension)
+        n = img.image.ndim - 1
+
+        # Select the slice of the old_tiles array to replace
+        replace_slice = [slice(None)] * n + [img.colors[mainchannel]]
+
+        # Use advanced indexing and slicing to assign the new tiles to the old tiles
+        img.image[replace_slice] = new_channel
         pass
-
-    # The number of dimensions of the tiles (excluding the channel dimension)
-    n = img.image.ndim - 1
-
-    # Select the slice of the old_tiles array to replace
-    replace_slice = [slice(None)] * n + [img.colors[mainchannel]]
-
-    # Use advanced indexing and slicing to assign the new tiles to the old tiles
-    img.image[replace_slice] = new_red
 
     return img

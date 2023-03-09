@@ -10,7 +10,8 @@ from tqdm import tqdm
 from . import ImageTIFF
 
 
-def processimage(func: Callable, imagepath: str, isbgr=False, out=None, hierarchy_inputDir=None, tile=False, **kwargs):
+def processimage(func: Callable, imagepath: str, isbgr=False, out=None, hierarchy_inputDir=None, tilesize: int = 0,
+                 **kwargs):
     file = basename(imagepath)
     filebase, ext = [splitext(file)[0], '.tif']
     newfile = f'{filebase}_Processed_{ext}'
@@ -33,7 +34,7 @@ def processimage(func: Callable, imagepath: str, isbgr=False, out=None, hierarch
         pass
 
     if not exists(join(out, newfile)):
-        image = ImageTIFF(imagepath, isbgr=isbgr, tile=tile)
+        image = ImageTIFF(imagepath, isbgr=isbgr, tilesize=tilesize)
         func(image, **kwargs)
 
         image.saveRGB(out, newfile, ext='')
