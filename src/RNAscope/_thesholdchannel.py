@@ -86,61 +86,55 @@ def thresholdchannel(img: ImageTIFF, mainchannel='red', C2channel='green', C3cha
         if whitebackground:
             for index in indices:
                 # Get initial channels data
-                old_channel = img.getChannel(mainchannel)[index[0], index[1], ...]
+                channel = img.getChannel(mainchannel)[index[0], index[1], ...]
                 channel2 = img.getChannel(C2channel)[index[0], index[1], ...]
                 channel3 = img.getChannel(C3channel)[index[0], index[1], ...]
 
-                # Generate the new red image/tiles data
-                new_channel = np.where(redish(old_channel, channel2, channel3),
-                                       np.uint8(255) - old_channel,
-                                       np.uint8(0)).astype(np.uint8)
+                # Generate and assign the new red image/tiles data
+                img.image[index[0], index[1], ...] = np.where(redish(channel, channel2, channel3),
+                                                              np.uint8(255) - channel,
+                                                              np.uint8(0)).astype(np.uint8)
 
-                # Assign new channels data
-                img.image[index[0], index[1], ...] = new_channel
                 pass
             pass
         else:
             for index in indices:
                 # Get initial channels data
-                old_channel = img.getChannel(mainchannel)[index[0], index[1], ...]
+                channel = img.getChannel(mainchannel)[index[0], index[1], ...]
                 channel2 = img.getChannel(C2channel)[index[0], index[1], ...]
                 channel3 = img.getChannel(C3channel)[index[0], index[1], ...]
 
-                # Generate the new red image/tiles data
+                # Generate and assign the new red image/tiles data
+                img.image[index[0], index[1], ...] = np.where(redish(channel, channel2, channel3),
+                                                              channel,
+                                                              np.uint8(0)).astype(np.uint8)
 
-                new_channel = np.where(redish(old_channel, channel2, channel3),
-                                       old_channel,
-                                       np.uint8(0)).astype(np.uint8)
-
-                # Assign new channels data
-                img.image[index[0], index[1], ...] = new_channel
                 pass
             pass
     else:
-        # Get initial channels data
-        channel = img.getChannel(mainchannel)
-        channel2 = img.getChannel(C2channel)
-        channel3 = img.getChannel(C3channel)
-        # Generate the new red image/tiles data
-        if whitebackground:
-            new_channel = np.where(redish(channel, channel2, channel3),
-                                   np.uint8(255) - channel,
-                                   np.uint8(0)).astype(np.uint8)
-            pass
-        else:
-            new_channel = np.where(redish(channel, channel2, channel3),
-                                   channel,
-                                   np.uint8(0)).astype(np.uint8)
-            pass
-
         # The number of dimensions of the tiles (excluding the channel dimension)
         n = img.image.ndim - 1
 
         # Select the slice of the old_tiles array to replace
         replace_slice = [slice(None)] * n + [img.colors[mainchannel]]
 
+        # Get initial channels data
+        channel = img.getChannel(mainchannel)
+        channel2 = img.getChannel(C2channel)
+        channel3 = img.getChannel(C3channel)
+
+        # Generate the new red image/tiles data
         # Use advanced indexing and slicing to assign the new tiles to the old tiles
-        img.image[replace_slice] = new_channel
+        if whitebackground:
+            img.image[replace_slice] = np.where(redish(channel, channel2, channel3),
+                                                np.uint8(255) - channel,
+                                                np.uint8(0)).astype(np.uint8)
+            pass
+        else:
+            img.image[replace_slice] = np.where(redish(channel, channel2, channel3),
+                                                channel,
+                                                np.uint8(0)).astype(np.uint8)
+            pass
         pass
 
     return img
