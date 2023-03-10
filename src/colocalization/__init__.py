@@ -1,1 +1,1 @@
-from _colocalization import *
+from ._colocalization import *
