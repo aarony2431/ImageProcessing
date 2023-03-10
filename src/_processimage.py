@@ -1,4 +1,5 @@
 import time
+import traceback
 from functools import partial
 from multiprocessing import Pool
 from os import makedirs, sep
@@ -52,7 +53,8 @@ def processimages_loop(func: Callable, imagepaths: list[str], **kwargs):
         try:
             processimage(func, imagepath, **kwargs)
         except Exception as e:
-            print(imagepath, e)
+            print(Exception, imagepath, e)
+            print(traceback.format_exc())
         pass
     pass
 

@@ -12,7 +12,7 @@ class ImageTIFF:
     def __init__(self, path: str, isbgr=True, tilesize: int = 0):
         self.path = path
         self.isRGB = isbgr
-        self.tile = tilesize == 0
+        self.tile = (tilesize != 0)
         if tilesize < 0:
             raise ValueError('\'tilesize\' must be an non-negative whole number!')
         if not self.tile:
@@ -38,7 +38,7 @@ class ImageTIFF:
                      for i in range(self.num_tiles[0])]) for j in range(self.num_tiles[1])])
 
             pass
-        self.maxvalue = np.max(self.image)
+        self.maxvalue = np.max([self.image, 0])
         if isbgr:
             self.colors = {'red': 2,
                            'green': 1,
@@ -76,10 +76,7 @@ class ImageTIFF:
             raise TypeError('\'channel\' must be an integer or string!')
         pass
 
-        # Select the slice of the old_tiles array to replace
-        target_slice = [slice(None)] * n + [channelnumber]
-
-        return self.image[target_slice]
+        return self.image[..., channelnumber]
 
     # returns the shape in the order (x, y, z)
     def shape(self):
