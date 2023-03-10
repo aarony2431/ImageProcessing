@@ -15,7 +15,7 @@ def processimage(func: Callable, imagepath: str, isbgr=False, out=None, hierarch
                  **kwargs):
     file = basename(imagepath)
     filebase, ext = [splitext(file)[0], '.tif']
-    newfile = f'{filebase}_Processed_{ext}'
+    newfile = f'{filebase}_Processed{ext}'
 
     if out is None or '':
         out = '~'

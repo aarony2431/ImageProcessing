@@ -32,13 +32,13 @@ class ImageTIFF:
                 self.num_tiles = (img_size[0] // tile_size[0], img_size[1] // tile_size[1])
 
                 # Split the image into tiles using numpy
-                input_array = np.array(img)
+                input_array = np.array(img, dtype=np.uint8)
                 self.image = np.array([np.array(
                     [input_array[j * tile_size[1]:(j + 1) * tile_size[1], i * tile_size[0]:(i + 1) * tile_size[0], :]
                      for i in range(self.num_tiles[0])]) for j in range(self.num_tiles[1])])
 
             pass
-        self.maxvalue = np.max([self.image, 0])
+        self.maxvalue = np.amax(self.image)
         if isbgr:
             self.colors = {'red': 2,
                            'green': 1,
@@ -94,9 +94,9 @@ class ImageTIFF:
     def collapse(self, channel: str | int = 'all'):
         # Get channel number based on type of channel
         if channel == 'all':
-            final_array = np.concatenate(np.concatenate(self.image, axis=2), axis=0)
+            final_array = np.concatenate(np.concatenate(self.image, axis=1), axis=1)
         elif isinstance(channel, (int, str)):
-            final_array = np.concatenate(np.concatenate(self.getChannel(channel), axis=2), axis=0)
+            final_array = np.concatenate(np.concatenate(self.getChannel(channel), axis=1), axis=1)
             pass
         else:
             raise TypeError('\'channel\' must be a valid integer or string!')
