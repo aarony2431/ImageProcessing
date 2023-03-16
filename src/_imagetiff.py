@@ -32,10 +32,13 @@ class ImageTIFF:
                 self.num_tiles = (img_size[0] // tile_size[0], img_size[1] // tile_size[1])
 
                 # Split the image into tiles using numpy
-                input_array = np.array(img, dtype=np.uint8)
+                # input_array = np.array(img, dtype=np.uint8)
+                # self.image = np.array([np.array(
+                #     [input_array[j * tile_size[1]:(j + 1) * tile_size[1], i * tile_size[0]:(i + 1) * tile_size[0], :]
+                #      for i in range(self.num_tiles[0])], dtype=np.uint8) for j in range(self.num_tiles[1])])
                 self.image = np.array([np.array(
-                    [input_array[j * tile_size[1]:(j + 1) * tile_size[1], i * tile_size[0]:(i + 1) * tile_size[0], :]
-                     for i in range(self.num_tiles[0])]) for j in range(self.num_tiles[1])])
+                    [img.crop((j * tile_size[1], i * tile_size[0], (j + 1) * tile_size[1], (i + 1) * tile_size[0]))
+                     for i in range(self.num_tiles[0])], dtype=np.uint8) for j in range(self.num_tiles[1])])
 
             pass
         self.maxvalue = np.amax(self.image)
