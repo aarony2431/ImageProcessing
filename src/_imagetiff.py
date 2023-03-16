@@ -36,9 +36,18 @@ class ImageTIFF:
                 # self.image = np.array([np.array(
                 #     [input_array[j * tile_size[1]:(j + 1) * tile_size[1], i * tile_size[0]:(i + 1) * tile_size[0], :]
                 #      for i in range(self.num_tiles[0])], dtype=np.uint8) for j in range(self.num_tiles[1])])
-                self.image = np.array([np.array(
-                    [img.crop((j * tile_size[1], i * tile_size[0], (j + 1) * tile_size[1], (i + 1) * tile_size[0]))
-                     for i in range(self.num_tiles[0])], dtype=np.uint8) for j in range(self.num_tiles[1])])
+                self.image = np.asarray(
+                    [np.asarray(
+                        [np.asarray(
+                            img.crop(
+                                (j * tile_size[1],
+                                 i * tile_size[0],
+                                 (j + 1) * tile_size[1],
+                                 (i + 1) * tile_size[0])))
+                         for i in range(self.num_tiles[0])
+                         ], dtype=np.uint8)
+                        for j in range(self.num_tiles[1])
+                    ])
 
             pass
         self.maxvalue = np.amax(self.image)
