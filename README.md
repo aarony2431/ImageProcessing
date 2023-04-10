@@ -8,7 +8,24 @@ TBD
 
 ## Usage
 
-asdf
+Batch image processing can be performed by importing the 'processimage' module and applying it to some image processing function. This function may be a supplied function or a custom function
+```
+from ImageProcessing.src import processimage, processimage_loop, processimage_pool
+from ImageProcessing.src.RNAscope import thresholdchannel
+
+func = thresholdchannel
+
+processimage(func, imagepath, **kwargs)
+processimage_loop(func, imagepaths, logdir=log_file_directory, **kwargs)
+processimage_pool(func, imagepaths, logdir=log_file_directory, **kwargs)
+```
+
+For RNAscope, relative counts can be obtained using the [PyImageJ module](https://github.com/imagej/pyimagej). 
+```
+from ImageProcessing.src.RNAscope import getcounts
+
+getcounts(inputDir, outputDir)
+```
 
 ## Contributing
 
