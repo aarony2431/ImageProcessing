@@ -20,7 +20,17 @@ processimage_loop(func, imagepaths, logdir=log_file_directory, **kwargs)
 processimage_pool(func, imagepaths, logdir=log_file_directory, **kwargs)
 ```
 
-For RNAscope, relative counts can be obtained using `getcounts` which utilizes the [PyImageJ module](https://github.com/imagej/pyimagej). 
+For RNAscope, please first ensure that the [PyImageJ module](https://github.com/imagej/pyimagej) is installed and activated by using
+```
+conda install mamba -n base -c conda-forge
+mamba create -n pyimagej -c conda-forge pyimagej openjdk=8
+conda activate pyimagej
+```
+or
+```
+pip install pyimagej
+```
+Relative RNAscope counts can be obtained using `getcounts` function which utilizes PyImageJ. 
 ```
 from ImageProcessing.src.RNAscope import getcounts
 
