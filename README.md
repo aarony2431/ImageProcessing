@@ -8,7 +8,7 @@ TBD
 
 ## Usage
 
-Batch image processing can be performed by importing the `processimage` module and applying it to some image processing function. This function may be a supplied function or a custom function.
+Batch image processing can be performed by importing the `processimage` module and applying it to some image processing function. This function may be a supplied function or a user-defined function. Use the `**kwargs` argument to pass values to any supplied or user-defined function.
 ```
 from ImageProcessing.src import processimage, processimage_loop, processimage_pool
 from ImageProcessing.src.RNAscope import thresholdchannel
