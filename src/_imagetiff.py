@@ -142,9 +142,9 @@ class ImageTIFF:
     def save(self, dirpath: str, name: str, channel: str | int, ext='.tif'):
         if not self.tile:
             if channel == 'all':
-                Image.fromarray(self.image).save(join(dirpath, name) + ext)
+                Image.fromarray(self.image.astype(np.uint8)).save(join(dirpath, name) + ext)
             elif isinstance(channel, (int, str)):
-                Image.fromarray(self.getChannel(channel)).save(join(dirpath, name) + ext)
+                Image.fromarray(self.getChannel(channel).astype(np.uint8)).save(join(dirpath, name) + ext)
             else:
                 raise TypeError('\'channel\' must be a valid integer or string!')
         else:
