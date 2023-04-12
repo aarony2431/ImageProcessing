@@ -1,15 +1,22 @@
+from concurrent.futures import ThreadPoolExecutor
 from copy import deepcopy
+from functools import partial
 from os.path import join
+from typing import Callable
+
 import cv2 as cv
+import dask.array as da
+import dask_image.imread
 
 import numpy as np
 from PIL import Image
+from osgeo import gdal
 
 Image.MAX_IMAGE_PIXELS = None
 
 
 class ImageTIFF:
-    def __init__(self, path: str, isbgr=True, tilesize: int = 0):
+    def __init__(self, path: str, isbgr=True, tilesize: int = 0, image_library: str = 'Dask'):
         self.path = path
         self.isRGB = isbgr
         self.tile = (tilesize != 0)
@@ -21,35 +28,52 @@ class ImageTIFF:
                 pass
             pass
         else:
-            with Image.open(path) as img:
-                # Define the tile size
-                tile_size = (tilesize, tilesize)
+            # Define image library type
+            self.image_library = image_library.lower()
 
-                # Get the size of the input image
-                img_size = img.size
+            if image_library.lower() == 'dask':
+                chunks = (tilesize, tilesize, -1)
+                self.image = da.from_array(dask_image.imread.imread(path), chunks=chunks)
+                pass
+            elif image_library.lower() == 'pil':
+                with Image.open(path) as img:
+                    # Define the tile size
+                    tile_size = (tilesize, tilesize)
 
-                # Calculate the number of tiles in each dimension
-                self.num_tiles = (img_size[0] // tile_size[0], img_size[1] // tile_size[1])
+                    # Get the size of the input image
+                    img_size = img.size
 
-                # Split the image into tiles using numpy
-                # input_array = np.array(img, dtype=np.uint8)
-                # self.image = np.array([np.array(
-                #     [input_array[j * tile_size[1]:(j + 1) * tile_size[1], i * tile_size[0]:(i + 1) * tile_size[0], :]
-                #      for i in range(self.num_tiles[0])], dtype=np.uint8) for j in range(self.num_tiles[1])])
-                self.image = np.asarray(
-                    [np.asarray(
+                    # Calculate the number of tiles in each dimension
+                    self.num_tiles = (img_size[0] // tile_size[0], img_size[1] // tile_size[1])
+
+                    # Split the image into tiles using numpy
+                    # input_array = np.array(img, dtype=np.uint8)
+                    # self.image = np.array([np.array(
+                    #     [input_array[j * tile_size[1]:(j + 1) * tile_size[1], i * tile_size[0]:(i + 1) * tile_size[0], :]
+                    #      for i in range(self.num_tiles[0])], dtype=np.uint8) for j in range(self.num_tiles[1])])
+                    self.image = np.asarray(
                         [np.asarray(
-                            img.crop(
-                                (j * tile_size[1],
-                                 i * tile_size[0],
-                                 (j + 1) * tile_size[1],
-                                 (i + 1) * tile_size[0])))
-                         for i in range(self.num_tiles[0])
-                         ], dtype=np.uint8)
-                        for j in range(self.num_tiles[1])
-                    ])
+                            [np.asarray(
+                                img.crop(
+                                    (j * tile_size[1],
+                                     i * tile_size[0],
+                                     (j + 1) * tile_size[1],
+                                     (i + 1) * tile_size[0])))
+                                for i in range(self.num_tiles[0])
+                            ], dtype=np.uint8)
+                            for j in range(self.num_tiles[1])
+                        ])
+                pass
+            elif image_library.lower() == 'gdal':
+                # Open the image using GDAL
+                with gdal.Open('large_image.tif') as ds:
+                    pass
+                # Close the dataset
+                ds = None
+                pass
+            else:
+                raise ValueError('Not a valid image library name')
 
-            pass
         self.maxvalue = np.amax(self.image)
         if isbgr:
             self.colors = {'red': 2,
@@ -106,9 +130,9 @@ class ImageTIFF:
     def collapse(self, channel: str | int = 'all'):
         # Get channel number based on type of channel
         if channel == 'all':
-            final_array = np.concatenate(np.concatenate(self.image, axis=1), axis=1)
+            final_array = np.concatenate(np.concatenate(self.image, axis=1), axis=1, dtype=np.uint8)
         elif isinstance(channel, (int, str)):
-            final_array = np.concatenate(np.concatenate(self.getChannel(channel), axis=1), axis=1)
+            final_array = np.concatenate(np.concatenate(self.getChannel(channel), axis=1), axis=1, dtype=np.uint8)
             pass
         else:
             raise TypeError('\'channel\' must be a valid integer or string!')
@@ -138,6 +162,14 @@ class ImageTIFF:
 
     def saveRGB(self, dirpath: str, name: str, ext='.tif'):
         self.save(dirpath, name, 'all', ext=ext)
+        pass
+
+    def map_blocks(self, func: Callable, **kwargs):
+        self.image = da.map_blocks(partial(func, **kwargs), self.image)
+        pass
+
+    def saveDask(self, dirpath: str, name: str, ext='.tif'):
+
         pass
 
     pass
