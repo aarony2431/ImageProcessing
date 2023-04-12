@@ -45,7 +45,7 @@ close(dot_image);
 close("Results");
 
 selectWindow(area_image);
-setAutoThreshold("Default");
+setAutoThreshold("Huang");
 run("Convert to Mask");
 run("Options...", "iterations=2 count=1 black do=Dilate");
 run("Options...", "iterations=3 count=1 black do=Close");
@@ -72,7 +72,7 @@ results = filename + "\t" + filedir + "\t" + count + "\t" + total_area "\t" + ar
 """
 
 
-def getcounts(inputdir: str, outputdir: str, fiji_version='native'):
+def getcounts(inputdir: str, outputdir: str, fiji_version: str = 'native'):
     inputDir = os.path.abspath(inputdir)
     outputDir = os.path.abspath(outputdir)
 
