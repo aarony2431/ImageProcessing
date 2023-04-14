@@ -5,7 +5,7 @@ from functools import partial
 from multiprocessing import Pool
 from os import makedirs, sep
 from os.path import *
-from typing import Callable
+from typing import Callable, Optional
 
 from tqdm import tqdm
 
@@ -73,19 +73,20 @@ def processimage(func: Callable,
 
 def processimages_loop(func: Callable,
                        imagepaths: list[str],
-                       logdir=None,
+                       logdir=Optional[str],
                        **kwargs):
     if logdir:
-        logname = f'log{time.time()}.txt'
-        with open(join(logdir, logname), 'w') as f:
-            pass
+        logname = f'log{time.time_ns()}.txt'
+        # with open(join(logdir, logname), 'w') as f:
+        #     pass
         # Loop through each image with progress bar and perform function
         for imagepath in tqdm(imagepaths, unit='img'):
             try:
                 out = processimage(func, imagepath, **kwargs)
-                if out is None:
+                if out is not None:
                     with open(join(logdir, logname), 'a') as logfile:
                         logfile.write(out)
+                        logfile.write('\n')
                     pass
             except Exception as e:
                 print(Exception, imagepath, e)
@@ -110,12 +111,12 @@ def processimages_pool(func: Callable,
                        processes=2,
                        chunksize=None,
                        aSync=False,
-                       logdir=None,
+                       logdir=Optional[str],
                        **kwargs):
     if logdir:
         logname = f'log{time.time_ns()}.txt'
-        with open(join(logdir, logname), 'w') as f:
-            pass
+        # with open(join(logdir, logname), 'w') as f:
+        #     pass
         with Pool(processes=max(processes, 1)) as pool:
             if aSync:
                 errs = pool.starmap_async(processimage,
@@ -123,9 +124,10 @@ def processimages_pool(func: Callable,
                                            tqdm(imagepaths, unit='img')],
                                           chunksize=chunksize)
                 for err in errs.get():
-                    if err is None:
+                    if err is not None:
                         with open(join(logdir, logname), 'a') as logfile:
                             logfile.write(err)
+                            logfile.write('\n')
                             pass
                         pass
             else:
@@ -133,7 +135,7 @@ def processimages_pool(func: Callable,
                                         [(partial(func, **kwargs), imagepath) for imagepath in
                                          tqdm(imagepaths, unit='img')],
                                         chunksize=chunksize):
-                    if err is None:
+                    if err is not None:
                         with open(join(logdir, logname), 'a') as logfile:
                             logfile.write(err)
                             pass
