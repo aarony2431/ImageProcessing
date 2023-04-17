@@ -172,4 +172,7 @@ class ImageTIFF:
 
         pass
 
+    def asarray(self):
+        return np.asarray(self.image)
+
     pass
