@@ -5,7 +5,11 @@ import numpy as np
 from .. import ImageTIFF
 
 
-def thresholdchannel(img: ImageTIFF, mainchannel='red', C2channel='green', C3channel='blue', whitebackground=True,
+def thresholdchannel(img: ImageTIFF | np.ndarray,
+                     mainchannel='red',
+                     C2channel='green',
+                     C3channel='blue',
+                     whitebackground=True,
                      loop=True):
     """
     Thresholds the corresponding channel color and returns an image with the thresholded channel above background
@@ -77,60 +81,84 @@ def thresholdchannel(img: ImageTIFF, mainchannel='red', C2channel='green', C3cha
         return np.logical_and(np.logical_not(isnotred_greencorrection(r, g, b, red_mask)),
                               np.logical_or(isred(r, g, b, red_mask), isred_bluecorrection(r, g, b, red_mask)))
 
-    if loop:
-        # Create iterable of all combinations of [0, 1,..., x-1] and [0, 1,..., y-1]
-        y, x = img.num_tiles
-        indices = itertools.product(range(x), range(y))
+    if isinstance(img, np.ndarray):
+        channel_map = {'red': 0,
+                       'green': 1,
+                       'blue': 2}
+        out = np.array(img)
+        channel = out[..., channel_map[mainchannel]]
+        channel2 = out[..., channel_map[C2channel]]
+        channel3 = out[..., channel_map[C3channel]]
 
-        # Loop through each index
         if whitebackground:
-            for index in indices:
-                # Get initial channels data
-                channel = img.getChannel(mainchannel)[index[0], index[1], ...]
-                channel2 = img.getChannel(C2channel)[index[0], index[1], ...]
-                channel3 = img.getChannel(C3channel)[index[0], index[1], ...]
-
-                # Generate and assign the new red image/tiles data
-                img.image[index[0], index[1], ..., img.colors[mainchannel]] = np.where(
-                    redish(channel, channel2, channel3),
-                    np.uint8(255) - channel,
-                    np.uint8(0)).astype(np.uint8)
-
-                pass
+            out[..., channel_map[mainchannel]] = np.where(redish(channel, channel2, channel3),
+                                                          np.uint8(255) - channel,
+                                                          np.uint8(0)).astype(np.uint8)
             pass
         else:
-            for index in indices:
-                # Get initial channels data
-                channel = img.getChannel(mainchannel)[index[0], index[1], ...]
-                channel2 = img.getChannel(C2channel)[index[0], index[1], ...]
-                channel3 = img.getChannel(C3channel)[index[0], index[1], ...]
+            out[..., channel_map[mainchannel]] = np.where(redish(channel, channel2, channel3),
+                                                          channel,
+                                                          np.uint8(0)).astype(np.uint8)
+            pass
+        return out
+    elif isinstance(img, ImageTIFF):
+        if loop:
+            # Create iterable of all combinations of [0, 1,..., x-1] and [0, 1,..., y-1]
+            y, x = img.num_tiles
+            indices = itertools.product(range(x), range(y))
 
-                # Generate and assign the new red image/tiles data
-                img.image[index[0], index[1], ..., img.colors[mainchannel]] = np.where(
-                    redish(channel, channel2, channel3),
-                    channel,
-                    np.uint8(0)).astype(np.uint8)
+            # Loop through each index
+            if whitebackground:
+                for index in indices:
+                    # Get initial channels data
+                    channel = img.getChannel(mainchannel)[index[0], index[1], ...]
+                    channel2 = img.getChannel(C2channel)[index[0], index[1], ...]
+                    channel3 = img.getChannel(C3channel)[index[0], index[1], ...]
 
+                    # Generate and assign the new red image/tiles data
+                    img.image[index[0], index[1], ..., img.colors[mainchannel]] = np.where(
+                        redish(channel, channel2, channel3),
+                        np.uint8(255) - channel,
+                        np.uint8(0)).astype(np.uint8)
+
+                    pass
                 pass
-            pass
-    else:
-        # Get initial channels data
-        channel = img.getChannel(mainchannel)
-        channel2 = img.getChannel(C2channel)
-        channel3 = img.getChannel(C3channel)
+            else:
+                for index in indices:
+                    # Get initial channels data
+                    channel = img.getChannel(mainchannel)[index[0], index[1], ...]
+                    channel2 = img.getChannel(C2channel)[index[0], index[1], ...]
+                    channel3 = img.getChannel(C3channel)[index[0], index[1], ...]
 
-        # Generate the new red image/tiles data
-        # Use advanced indexing and slicing to assign the new tiles to the old tiles
-        if whitebackground:
-            img.image[..., img.colors[mainchannel]] = np.where(redish(channel, channel2, channel3),
-                                                               np.uint8(255) - channel,
-                                                               np.uint8(0)).astype(np.uint8)
-            pass
+                    # Generate and assign the new red image/tiles data
+                    img.image[index[0], index[1], ..., img.colors[mainchannel]] = np.where(
+                        redish(channel, channel2, channel3),
+                        channel,
+                        np.uint8(0)).astype(np.uint8)
+
+                    pass
+                pass
         else:
-            img.image[..., img.colors[mainchannel]] = np.where(redish(channel, channel2, channel3),
-                                                               channel,
-                                                               np.uint8(0)).astype(np.uint8)
+            # Get initial channels data
+            channel = img.getChannel(mainchannel)
+            channel2 = img.getChannel(C2channel)
+            channel3 = img.getChannel(C3channel)
+
+            # Generate the new red image/tiles data
+            # Use advanced indexing and slicing to assign the new tiles to the old tiles
+            if whitebackground:
+                img.image[..., img.colors[mainchannel]] = np.where(redish(channel, channel2, channel3),
+                                                                   np.uint8(255) - channel,
+                                                                   np.uint8(0)).astype(np.uint8)
+                pass
+            else:
+                img.image[..., img.colors[mainchannel]] = np.where(redish(channel, channel2, channel3),
+                                                                   channel,
+                                                                   np.uint8(0)).astype(np.uint8)
+                pass
             pass
         pass
-
+    else:
+        raise TypeError(
+            f'"img" of class {img.__class__} is not supported! Supported classes are *ImageTiff* and *numpy.ndarray*.')
     return img
