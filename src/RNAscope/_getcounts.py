@@ -56,6 +56,9 @@ total_area = 0;
 for(i = 0; i < nResults; i++){
     total_area = total_area + getResult("Area", i);
 }
+if (total_area == 0) {
+    total_area = getResult("Area", 0);
+}
 // ranked = Array.rankPositions(areas);
 // area = ranked[Table.size - 1];
 roiManager("Deselect");
@@ -103,7 +106,7 @@ def getcounts(inputdir: str, outputdir: str, fiji_version: str = 'native'):
                 f'{os.path.basename(imagepath)} was processed')
             pass
 
-        with open(os.path.join(outputDir, 'DotCounts.csv'), 'w', encoding='utf-8', newline='\n') as f:
+        with open(os.path.join(outputDir, f'DotCounts_{time.time_ns()}.csv'), 'w', encoding='utf-8', newline='\n') as f:
             writer = csv.writer(f, delimiter='\t')
             header = ['Image Name',
                       'Directory Path',
