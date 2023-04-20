@@ -120,7 +120,7 @@ def processimage(func: Callable,
                 height, width = (shape[0], shape[1])
 
                 # Define the tile size
-                tile_height, tile_width = (256, 256)
+                tile_height, tile_width = (1024, 1024)
 
                 # Get number of tiles
                 tiles_tall = np.arange(0, height, tile_height)
