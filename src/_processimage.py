@@ -16,7 +16,7 @@ from typing import Callable, Optional
 from tqdm import tqdm
 
 from ._imagetiff import ImageTIFF
-from ._decompress import decompress
+from ._decompress import decompress, copy
 
 
 def processimage(func: Callable,
@@ -115,8 +115,7 @@ def processimage(func: Callable,
                 out_file = decompress(imagepath, out, library='')
 
                 # Open the input file and read its dimensions
-                with tifffile.TiffFile(out_file) as tif:
-                    shape = tif.asarray().shape
+                shape = tifffile.TiffFile(out_file).pages[0].shape
                 height, width = (shape[0], shape[1])
 
                 # Define the tile size
@@ -137,7 +136,7 @@ def processimage(func: Callable,
                                    position=1):
                     start_height, start_width = (y * tile_height, x * tile_width)
                     # Load specific tile into memmap memory
-                    tile = tifffile.memmap(out_file, mode='r+', dtype=np.uint8)[
+                    tile = np.memmap(out_file, mode='r+', dtype=np.uint8)[
                            start_height:(start_height + tile_width),
                            start_width:(start_width + tile_height),
                            ...]
@@ -163,8 +162,8 @@ def processimage(func: Callable,
                 # Copy and decompress file to output directory for modification
                 out_file = decompress(imagepath, out, library='')
 
-                image = tifffile.memmap(out_file, mode='r+', dtype=np.uint8)
-                shape = np.shape(image)
+                image = np.memmap(out_file, mode='r+', dtype=np.uint8)
+                shape = tifffile.TiffFile(out_file).pages[0].shape
                 height, width = (shape[0], shape[1])
 
                 # Define the tile size
@@ -193,9 +192,56 @@ def processimage(func: Callable,
 
                     # Process the tile and set it as the value for the new tile
                     image[
-                        start_height:(start_height + tile_width),
-                        start_width:(start_width + tile_height),
-                        ...] = tile_result
+                    start_height:(start_height + tile_width),
+                    start_width:(start_width + tile_height),
+                    ...] = tile_result
+                    pass
+                image.flush()
+                del image
+                gc.collect()
+                return None
+            except (MemoryError, struct.error) as err:
+                tqdm.write(f'memory/struct error: {file}')
+                return imagepath
+        elif image_library.lower() == 'memmap_test':
+            # Slow but tries to lower the amount of memory usage
+            try:
+                # Copy and decompress file to output directory for modification
+                # out_file = copy(imagepath, out)
+                out_file = join(out, basename(imagepath))
+
+                shape = tifffile.TiffFile(imagepath).pages[0].shape
+                image = np.memmap(out_file, shape=shape, mode='r+', dtype=np.uint8)
+                height, width = (shape[0], shape[1])
+
+                # Define the tile size
+                tile_size = int(2 ** 10)
+
+                # Get number of tiles
+                tiles_tall = np.arange(0, height, tile_size)
+                tiles_wide = np.arange(0, width, tile_size)
+
+                # Iterate over each tile
+                tqdm_iter = np.ndindex(len(tiles_tall), len(tiles_wide))
+                total = len(tiles_tall) * len(tiles_wide)
+                for [y, x] in tqdm(tqdm_iter,
+                                   total=total,
+                                   unit='tile',
+                                   desc='Progress bar for image',
+                                   leave=False,
+                                   position=1):
+                    # Define tile dimensions
+                    start_height, start_width = (y * tile_size, x * tile_size)
+                    end_height, end_width = (start_height + tile_size, start_width + tile_size)
+
+                    # Get tile
+                    tile = image[start_height:end_height, start_width:end_width, ...]
+
+                    # Process the tile and set it as the value for the new tile
+                    tile_result = func(tile, **kwargs)
+
+                    # Process the tile and set it as the value for the new tile
+                    image[start_height:end_height, start_width:end_width, ...] = tile_result
                     pass
                 image.flush()
                 del image

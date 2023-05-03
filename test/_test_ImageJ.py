@@ -4,7 +4,7 @@ from os.path import dirname, join, splitext
 
 import numpy as np
 from PIL import Image
-from ..src.ImageJ import threshold_huang, ParticleAnalyzer, FindMaxima
+from ..src.ImageJ import threshold_huang, ParticleAnalyzer, FindMaxima, convert_pixel_to_area, image_size_microns, pixels_per_micron
 
 
 def test_imagej():
@@ -46,11 +46,13 @@ def _test_threshold():
     # Threshold test
     thresholded_image_array = threshold_huang(image_path, color_channel='blue')
     assert 92304771 == np.count_nonzero(thresholded_image_array)
+    assert np.round(5732015.582172504) == np.round(convert_pixel_to_area(np.count_nonzero(thresholded_image_array),
+                                                                         image=image_path))
     # currently not working in chunks
-    chunk_size = int(2 ** 12)
-    thresholded_image_array = threshold_huang(image_path, color_channel='blue', tile_size=(chunk_size, chunk_size))
-    filebase, ext = splitext(test_image)
-    threshold_image = join(folder_path, f'{filebase}_THRESHOLD{ext}')
-    Image.fromarray(thresholded_image_array).save(threshold_image)
-    print(np.count_nonzero(thresholded_image_array))
+    # chunk_size = int(2 ** 12)
+    # thresholded_image_array = threshold_huang(image_path, color_channel='blue', tile_size=(chunk_size, chunk_size))
+    # filebase, ext = splitext(test_image)
+    # threshold_image = join(folder_path, f'{filebase}_THRESHOLD{ext}')
+    # Image.fromarray(thresholded_image_array).save(threshold_image)
+    # print(np.count_nonzero(thresholded_image_array))
     pass
