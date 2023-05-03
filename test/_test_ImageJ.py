@@ -4,7 +4,7 @@ from os.path import dirname, join
 from ImageProcessing.src.ImageJ import threshold_huang, ParticleAnalyzer, FindMaxima
 
 
-def test_ImageJ():
+def test_imagej():
     test_maxima()
     pass
 
