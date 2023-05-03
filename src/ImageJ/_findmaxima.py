@@ -2,14 +2,16 @@ import os
 import PIL.Image
 import numpy as np
 import tifffile as tiff
+from numpy import ndarray
 from scipy import ndimage
+from skimage import morphology, filters
 
 
 def FindMaxima(image: np.ndarray | os.PathLike | str | tiff.TiffFile | PIL.Image.Image,
                color_channel: int | str,
                tile_size: tuple[int, int] | None = None,
-               noise_tolerance: int | float = 20.0,
-               neighborhood_size: int = 3) -> int:
+               noise_tolerance: np.uint8 | int | float | np.uint16 | np.uint32 = np.uint8(20),
+               neighborhood_size: int = 3) -> int | ndarray:
     """
     OpenCV/NumPy version of the "Find Maxima" function in ImageJ when used to get strictly the *number* of maxima.
     :param color_channel:
@@ -59,29 +61,27 @@ def FindMaxima(image: np.ndarray | os.PathLike | str | tiff.TiffFile | PIL.Image
 
                     # generate tile
                     img_chunk = tif.pages[0].asarray(out='memmap', squeeze=False)[
-                                start_height:end_height, start_width:end_width, channel]
+                                ..., start_height:end_height, start_width:end_width, channel]
 
                     # find local maxima using maximum filter
                     data_max = ndimage.maximum_filter(img_chunk, size=neighborhood_size, mode='constant')
 
                     # find maxima above a certain noise tolerance
-                    threshold = np.mean(data_max) + noise_tolerance
-                    maxima = (data_max == img_chunk) & (img_chunk > threshold)
+                    maxima = (data_max == img_chunk) & (img_chunk > noise_tolerance)
 
                     # perform non-maximum suppression
-                    footprint = np.ones((3, 3))
-                    maxima = ndimage.maximum_filter(maxima, footprint=footprint) == maxima
+                    maxima = ndimage.maximum_filter(maxima, size=neighborhood_size, mode='constant') == maxima
 
                     # label the maxima using connected components analysis
-                    labeled, chunk_num_maxima = ndimage.label(maxima)
+                    _, chunk_num_maxima = ndimage.label(maxima)
 
                     # add the count of maxima in this chunk to the total count
                     num_maxima += chunk_num_maxima
                     pass
                 pass
-            pass
+            return num_maxima
         else:
-            data = ndimage.imread(image)[..., channel]
+            data = tiff.imread(image)[..., channel]
         pass
     elif isinstance(image, tiff.TiffFile):
         # Tile the image if tile_size is provided
@@ -105,26 +105,24 @@ def FindMaxima(image: np.ndarray | os.PathLike | str | tiff.TiffFile | PIL.Image
 
                 # generate tile
                 img_chunk = image.pages[0].asarray(out='memmap', squeeze=False)[
-                            start_height:end_height, start_width:end_width, channel]
+                            ..., start_height:end_height, start_width:end_width, channel]
 
                 # find local maxima using maximum filter
                 data_max = ndimage.maximum_filter(img_chunk, size=neighborhood_size, mode='constant')
 
                 # find maxima above a certain noise tolerance
-                threshold = np.mean(data_max) + noise_tolerance
-                maxima = (data_max == img_chunk) & (img_chunk > threshold)
+                maxima = (data_max == img_chunk) & (img_chunk > noise_tolerance)
 
                 # perform non-maximum suppression
-                footprint = np.ones((3, 3))
-                maxima = ndimage.maximum_filter(maxima, footprint=footprint) == maxima
+                maxima = ndimage.maximum_filter(maxima, size=neighborhood_size, mode='constant') == maxima
 
                 # label the maxima using connected components analysis
-                labeled, chunk_num_maxima = ndimage.label(maxima)
+                _, chunk_num_maxima = ndimage.label(maxima)
 
                 # add the count of maxima in this chunk to the total count
                 num_maxima += chunk_num_maxima
                 pass
-            pass
+            return num_maxima
         else:
             data = np.asarray(image.asarray())[..., channel]
             pass
@@ -153,26 +151,24 @@ def FindMaxima(image: np.ndarray | os.PathLike | str | tiff.TiffFile | PIL.Image
                 end_height, end_width = (start_height + tile_size[0], start_width + tile_size[1])
 
                 # generate tile
-                img_chunk = np.asarray(data[start_height:end_height, start_width:end_width, channel])
+                img_chunk = np.asarray(data[..., start_height:end_height, start_width:end_width, channel])
 
                 # find local maxima using maximum filter
                 data_max = ndimage.maximum_filter(img_chunk, size=neighborhood_size, mode='constant')
 
                 # find maxima above a certain noise tolerance
-                threshold = np.mean(data_max) + noise_tolerance
-                maxima = (data_max == img_chunk) & (img_chunk > threshold)
+                maxima = (data_max == img_chunk) & (img_chunk > noise_tolerance)
 
                 # perform non-maximum suppression
-                footprint = np.ones((3, 3))
-                maxima = ndimage.maximum_filter(maxima, footprint=footprint) == maxima
+                maxima = ndimage.maximum_filter(maxima, size=neighborhood_size, mode='constant') == maxima
 
                 # label the maxima using connected components analysis
-                labeled, chunk_num_maxima = ndimage.label(maxima)
+                _, chunk_num_maxima = ndimage.label(maxima)
 
                 # add the count of maxima in this chunk to the total count
                 num_maxima += chunk_num_maxima
                 pass
-            pass
+            return num_maxima
         else:
             data = np.asarray(image)[..., channel]
         pass
@@ -183,23 +179,28 @@ def FindMaxima(image: np.ndarray | os.PathLike | str | tiff.TiffFile | PIL.Image
         pass
 
     # Process separate code if input is a numpy array or if no tile_size
-    if isinstance(image, np.ndarray) or tile_size:
+    if isinstance(image, np.ndarray) or not tile_size:
         # find local maxima using maximum filter
         data_max = ndimage.maximum_filter(data, size=neighborhood_size, mode='constant')
 
         # find maxima above a certain noise tolerance
-        threshold = np.mean(data_max) + noise_tolerance
-        maxima = (data_max == data) & (data > threshold)
+        maxima = (data_max == data) & (data > noise_tolerance)
 
         # perform non-maximum suppression
-        footprint = np.ones((3, 3))
-        maxima = ndimage.maximum_filter(maxima, footprint=footprint) == maxima
+        maxima = ndimage.maximum_filter(maxima, size=neighborhood_size, mode='constant') == maxima
 
         # label the maxima using connected components analysis
-        labeled, num_maxima = ndimage.label(maxima)
+        _, num_maxima = ndimage.label(maxima)
 
         # return the number of maxima
-        num_maxima = np.max(labeled)
+        return num_maxima
+
+        # # Find local maxima
+        # local_max = morphology.local_maxima(data, connectivity=neighborhood_size)
+        #
+        # # Threshold the image
+        # threshold = noise_tolerance
+        #
+        # return np.count_nonzero(local_max & data > threshold)
     else:
         raise Exception(f'Unknown Error')
-    return num_maxima
