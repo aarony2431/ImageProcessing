@@ -1,126 +1,72 @@
 import gzip
+import math
 import subprocess
 import os
 import zlib
-from os.path import exists
+import mmap
+from os.path import exists, basename, join, dirname, splitext
 
 import numpy as np
 import tifffile
 from PIL import Image
+from tqdm import tqdm
 
 
-def decompress(input_file_path: str,
-               output_dir_path: str,
-               library: str = ''):
-    # Create new filename
-    filename = f'{os.path.splitext(os.path.basename(input_file_path))[0]}_Processed.tif'
-    new_file_path = os.path.join(output_dir_path, filename)
+def decompress(input_file: str, output_dir: str, chunk_size=int(2**22), use_tqdm=True):
+    filename = basename(input_file)
+    filebase, ext = [splitext(filename)[0], '.tif']
+    output_file = f"{join(output_dir, filebase)}_UNCOMPRESSED{ext}"
 
-    if library.lower() == 'gzip':
-        # Open the compressed TIFF image
-        im = Image.open(input_file_path)
-
-        # Open the uncompressed TIFF image for writing
-        new_im = Image.new(im.mode, im.size)
-        new_im_fp = gzip.open(new_file_path, 'wb')
-
-        # Read and decompress the image data in chunks
-        chunk_size = 1024 * 1024  # 1 MB
-        while True:
-            data = im.fp.read(chunk_size)
-            if not data:
-                break
-            decompressed_data = gzip.decompress(data)
-            new_im_fp.write(decompressed_data)
-
-        # Close the files
-        im.fp.close()
-        new_im_fp.close()
-
-        # Save the uncompressed image to the output directory
-        new_im.save(new_file_path)
-        pass
-    elif library.lower() == 'zlib':
-        # Open the compressed TIFF image
-        im = Image.open(input_file_path)
-
-        # Open the uncompressed TIFF image for writing
-        new_im = Image.new(im.mode, im.size)
-        new_im_fp = open(new_file_path, 'wb')
-
-        # Read and decompress the image data in chunks
-        chunk_size = 1024 * 1024  # 1 MB
-        while True:
-            data = im.fp.read(chunk_size)
-            if not data:
-                break
-            decompressed_data = zlib.decompress(data)
-            new_im_fp.write(decompressed_data)
-
-        # Close the files
-        im.fp.close()
-        new_im_fp.close()
-
-        # Save the uncompressed image to the output directory
-        new_im.save(new_file_path)
-        pass
-    elif library.lower() == 'lzw':
-        with tifffile.TiffFile(input_file_path) as tif:
-            uncompressed_data = tif.asarray()
-
-        with tifffile.TiffWriter(new_file_path, bigtiff=True) as tif:
-            for i in range(0, uncompressed_data.shape[0], 256):
-                chunk = uncompressed_data[i:i + 256, :, :]
-                tif.write(chunk)
-        pass
-    else:
-        if not exists(new_file_path):
-            with Image.open(input_file_path) as compressed_img:
-                with Image.fromarray(np.asarray(compressed_img)) as uncompressed_img:
-                    uncompressed_img.save(new_file_path)
-                    pass
+    with open(input_file, 'rb') as f_in:
+        mm = mmap.mmap(f_in.fileno(), 0, access=mmap.ACCESS_READ)
+        # mm_current_pos = 0
+        shape = tifffile.TiffFile(f_in).pages[0].shape
+        if not exists(output_file):
+            with tifffile.TiffWriter(output_file, bigtiff=True) as file:
+                file.write(np.zeros(shape=shape, dtype=np.uint8), shape=shape, dtype=np.dtype(np.uint8))
                 pass
             pass
-        else:
-            new_file_path = None
-            pass
+        with open(output_file, 'r+b') as f_out:
+            out = mmap.mmap(f_out.fileno(), 0, access=mmap.ACCESS_WRITE)
+            total = math.ceil((out.size() / (3*chunk_size)))
+            if use_tqdm:
+                for data in tqdm(iter(lambda: mm.read(chunk_size), b''), total=total, unit='chunks'):
+                    out.write(data)
+                    out.flush()
+                    pass
+                out.close()
+                pass
+            else:
+                for data in iter(lambda: mm.read(chunk_size), b''):
+                    out.write(data)
+                    out.flush()
+                    pass
+                out.close()
+                pass
+        mm.close()
         pass
-    return new_file_path
+    return output_file
 
 
-    # # Create the output directory if it doesn't exist
-    # os.makedirs(output_dir_path, exist_ok=True)
-    #
-    # # Get the base filename of the input file
-    # filename = os.path.splitext(os.path.basename(input_file_path))[0]
-    #
-    # # Call tiffcp to uncompress the TIFF file in chunks
-    # chunk_size = 1024 * 1024  # 1 MB
-    # offset = 0
-    # count = 0
-    # while True:
-    #     output_file_path = os.path.join(output_dir_path, f"{filename}_{count}.tif")
-    #     cmd = [
-    #         'tiffcp', '-c', 'none', '-o', output_file_path,
-    #         input_file_path + f':{offset},{chunk_size}'
-    #     ]
-    #     subprocess.run(cmd, check=True)
-    #
-    #     # Increment the offset and count
-    #     offset += chunk_size
-    #     count += 1
-    #
-    #     # Check if we've read the entire file
-    #     if offset >= os.path.getsize(input_file_path):
-    #         break
-    #
-    # # Combine the chunks into a single file
-    # output_file_path = os.path.join(output_dir_path, f"{filename}_decompressed.tif")
-    # cmd = ['tiffcp', '-c', 'none', '-o', output_file_path]
-    # cmd += [os.path.join(output_dir_path, f"{filename}_{i}.tif") for i in range(count)]
-    # subprocess.run(cmd, check=True)
-    #
-    # # Delete the temporary files
-    # for i in range(count):
-    #     os.remove(os.path.join(output_dir_path, f"{filename}_{i}.tif"))
-    pass
+def copy(src_file_path: str, dest_dir: str, chunk_size=1024, use_tqdm=True):
+    filename = basename(src_file_path)
+    if dirname(src_file_path) == dest_dir:
+        filebase, ext = splitext(filename)
+        filename = f'{filebase}_COPY{ext}'
+    copy_file = join(dest_dir, filename)
+    with open(src_file_path, 'rb') as src_file, open(copy_file, 'wb') as dest_file:
+        if use_tqdm:
+            with tqdm(total=os.path.getsize(src_file_path), unit='bytes') as pbar:
+                while True:
+                    chunk = src_file.read(chunk_size)
+                    if not chunk:
+                        break
+                    dest_file.write(chunk)
+                    pbar.update(len(chunk))
+        else:
+            while True:
+                chunk = src_file.read(chunk_size)  # read a chunk of bytes from source file
+                if not chunk:
+                    break  # end of file reached
+                dest_file.write(chunk)  # write chunk to destination file
+    return copy_file

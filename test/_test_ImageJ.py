@@ -1,22 +1,23 @@
 import inspect
 
 from os.path import dirname, join
-from ImageProcessing.src.ImageJ import threshold_huang, ParticleAnalyzer, FindMaxima
+from ..src.ImageJ import threshold_huang, ParticleAnalyzer, FindMaxima
 
 
 def test_imagej():
-    test_maxima()
+    _test_maxima()
     pass
 
 
-def test_maxima():
+def _test_maxima():
     # Test imagepath
     image_path = r"F:\Aaron Y - extra space\Orbit H&E\Cyno TIF annotations - output\too big\uncompressed" \
                  r"\SP-012102_1001.22 adrenal gland_Mfa-SSB-O1_Default_Extendedlf_UNCOMPRESSED.tif"
     test_image = r"SP-012102_1001.22 adrenal gland_Mfa-SSB-O1_Default_Extendedlf_Processed.tif"
 
     # folder_path = dirname(inspect.getfile(test_maxima))
-    folder_path = r"F:\Aaron Y - extra space\Orbit H&E\Cyno TIF annotations - output\2nd output\Adrenal"
+    folder_path = r"F:\Aaron Y - extra space\Orbit H&E\Cyno TIF annotations - output" \
+                  r"\too big\2nd output processed image for reference"
     image_path = join(folder_path, test_image)
 
     # Threshold the blue channel to get image area
