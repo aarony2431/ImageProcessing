@@ -9,6 +9,9 @@ import scyjava
 import time
 
 from tqdm import tqdm
+from PIL import Image
+
+from ..Imagej import FindMaxima, ParticleAnalyzer, threshold_huang, pixels_per_micron, image_size_microns, convert_pixel_to_area
 
 # this code runs using the basic pyimagej environment created using
 #   conda install mamba -n base -c conda-forge
@@ -75,26 +78,25 @@ results = filename + "\t" + filedir + "\t" + count + "\t" + total_area "\t" + ar
 """
 
 default_header = ['Image Name',
-                      'Directory Path',
-                      'Dot Maxima',
-                      'Tissue Area (um^2)',
-                      'Total Image Area (um^2)',
-                      'Dots per um^2',
-                      'Identified area to image size ratio (for QC)'
-                      ]
+                  'Directory Path',
+                  'Dot Maxima',
+                  'Tissue Area (um^2)',
+                  'Total Image Area (um^2)',
+                  'Dots per um^2',
+                  'Identified area to image size ratio (for QC)'
+                  ]
 
 
 def getcounts(inputdir: str | os.PathLike, outputdir: str | os.PathLike, algorithm: Literal['opencv' | 'imagej'] = 'opencv', header: list = default_header, **kwargs):
     if algorithm == 'opencv':
+        opencv_keys = ['save_threshold_image_dir']
+        opencv_kwargs = {k: v for k, v in kwargs.items() if k in threshold_keys}
+        results = _batch_getcounts_opencv(inputdir, **opencv_kwargs)
         pass
     elif algorithm == 'imagej':
-        keys = kwargs.keys()
-        new_kwargs = {}
-        if 'fiji_version' in keys:
-            new_kwargs['fiji_version'] = keys['fiji_version']
-        if 'macro' in keys:
-            new_kwargs['macro'] = keys['macro']
-        results = _batch_getcounts_imagej(inputdir, **new_kwargs)
+        imagej_keys = ['fiji_version', 'macro']
+        imagej_kwargs = {k: v for k, v in kwargs.items() if k in threshold_keys}
+        results = _batch_getcounts_imagej(inputdir, **imagej_kwargs)
         pass
     else:
         raise ValueError(f'Invalid value for *algorithm*!')
@@ -114,10 +116,12 @@ def _getcounts_imagej(imagepath: str | os.PathLike, imagej_object: Any | None = 
         try:
             logging.basicConfig(level=logging.ERROR)
             with redirect_stdout(os.devnull), redirect_stderr(os.devnull):
-                result = ij.py.run_macro(default_macro, args)
+                pyimagej_results = ij.py.run_macro(default_macro, args)
+                result = str(pyimagej_results.getOutput('results')).split('\t')
         except Exception as e:
             print(e)
-    return list(str(result.getOutput('results')).split('\t'))
+            result = None
+    return list(result)
 
 
 def _batch_getcounts_imagej(inputdir: str | os.PathLike, fiji_version: str = 'native', macro: str = default_macro) -> list:
@@ -130,7 +134,7 @@ def _batch_getcounts_imagej(inputdir: str | os.PathLike, fiji_version: str = 'na
                       for image in glob(os.path.join(root, '*.[Tt][Ii][Ff]'))
                       if not os.path.islink(image)]
         if len(imagepaths) == 0:
-            raise ValueError(f'*inputdir* is not properly defined!')
+            raise ValueError(f'*inputdir* is empty!')
         
         results = []
         fiji = r'E:\Aaron Y\Fiji.app' if fiji_version == 'native' else f'sc.fiji:fiji:{fiji_version}'
@@ -143,7 +147,7 @@ def _batch_getcounts_imagej(inputdir: str | os.PathLike, fiji_version: str = 'na
                     result = _getcounts_imagej(imagepath, imagej_object=ij, macro=macro)
             except Exception as e:
                 print(e)
-                result = None
+                result = []
             finally:
                 results.append(result)
     else:
@@ -159,4 +163,81 @@ def _write(results: list | Any, outputdir: str | os.PathLike, header: list = def
         f.close()
         pass
     pass
+
+
+def _getcounts_opencv(imagepath: str | os.PathLike, save_threshold_image_dir: str | os.PathLike | None = None, func: Callable | None = None, **kwargs) -> list:
+    try:
+        if func:
+            result = func(imagepath, **kwargs)
+            pass
+        else:
+            threshold_keys = ['threshold_channel', 'tile_size', 'white_background']
+            threshold_kwargs = {k: v for k, v in kwargs.items() if k in threshold_keys}
+            if 'threshold_channel' not in threshold_kwargs.keys():
+                raise KeyError(f'Must specify a channel to be thresholded for the area!')
+            particleanalyzer_keys = ['area', 'threshold', 'threshold_step', 'circularity', 'convexity', 'inertia_ratio']
+            particleanalyzer_kwargs = {k: v for k, v in kwargs.items() if k in particleanalyzer_keys}
+            findmaxima_keys = ['maxima_channel', 'tile_size', 'noise_tolerance', 'neighborhood_size']
+            findmaxima_kwargs = {k: v for k, v in kwargs.items() if k in particleanalyzer_kwargs}
+            if 'maxima_channel' not in findmaxima_kwargs.keys():
+                raise KeyError(f'Must specify a channel for maxima identification!')
+            units_keys = ['xResolution_tag', 'yResolution_tag', 'ResolutionUnit_tag', 'collapse_resolutions']
+            units_kwargs = {k: v for k, v in kwargs.items() if k in units_keys}
+        
+            # Threshold the image on the selected channel
+            threshold_array = threshold_huang(imagepath, **threshold_kwargs)
+            if save_threshold_image_dir:
+                filename = os.path.basename(imagepath)
+                filebase, ext = os.path.splitext(filename)
+                newfilepath = os.path.join(save_threshold_image_dir, f'{filebase}_THRESHOLD{ext}')
+                Image.fromarray(threshold_array).save(newfilepath)
+                pass
+            # Use Particle Analyzer to get standard tissue outlines
+            # Dilate and close to connect any difficult areas and ensure the tissue it enclosing itself
+            # Use Particle Analyzer to get the new threshold matrix
+            # Get tissue area
+            # Get image area
+            image_height, image_width = image_size_microns(imagepath, **units_kwargs)
+            # Get dot counts
+            num_maxima = FindMaxima(imagepath, **findmaxima_kwargs)
+            
+            result = []
+            result[0] = os.path.basename(imagepath) #Image name
+            result[1] = os.path.dirname(imagepath)  #Image path
+            result[2] = num_maxima                  #Dot Count
+            result[3] = '' #Tissue area
+            result[4] = image_height * image_width  #Image Area
+            result[5] = result[2] / result[3]       #Dots per unit area
+            result[6] = result[3] / result[4]       #Tissue to image area ratio (for QC)
+            pass
+        pass
+    except Exception as e:
+        print(e)
+        result = None
+    return list(result)
+
+
+def _batch_getcounts_opencv(inputdir: str | os.PathLike, save_threshold_image_dir: str | os.PathLike | None = None, func: Callable | None = None, **kwargs) -> list:
+    inputDir = os.path.abspath(inputdir)
+    
+    # Ensure input and output are properly defined
+    if inputDir != '':
+        imagepaths = [image
+                      for root, dirs, files in os.walk(inputDir)
+                      for image in glob(os.path.join(root, '*.[Tt][Ii][Ff]'))
+                      if not os.path.islink(image)]
+        if len(imagepaths) == 0:
+            raise ValueError(f'*inputdir* is empty!')
+    
+    for imagepath in tqdm(imagepaths):
+        try:
+            result = _getcounts_opencv(imagepath, save_threshold_image_dir=save_threshold_image_dir, func=func, **kwargs)
+        except Exception as e:
+            print(e)
+            result = []
+        finally:
+            results.append(result)
+    else:
+        raise ValueError(f'*inputdir* is not properly defined!')
+    return results
 
