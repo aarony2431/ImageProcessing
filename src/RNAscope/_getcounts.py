@@ -18,7 +18,7 @@ from tqdm import tqdm
 scyjava.config.add_option('-Xmx24g')
 # scyjava.config.add_option(r'-Dplugins.dir=E:\Aaron Y\Fiji.app\plugins')
 
-macro = """
+default_macro = """
 #@ String imagepath
 #@output String results
 
@@ -74,41 +74,7 @@ area_ratio = 1.0 * total_area / area;
 results = filename + "\t" + filedir + "\t" + count + "\t" + total_area "\t" + area + "\t" + dot_area_ratio + "\t" + area_ratio;
 """
 
-
-def getcounts(inputdir: str, outputdir: str, fiji_version: str = 'native'):
-    inputDir = os.path.abspath(inputdir)
-    outputDir = os.path.abspath(outputdir)
-
-    # Ensure input and output are properly defined
-    if inputDir != '' and outputDir != '':
-        imagepaths = [image
-                      for root, dirs, files in os.walk(inputDir)
-                      for image in glob(os.path.join(root, '*.[Tt][Ii][Ff]'))
-                      if not os.path.islink(image)]
-
-        start = time.perf_counter()
-
-        results = []
-        fiji = r'E:\Aaron Y\Fiji.app' if fiji_version == 'native' else f'sc.fiji:fiji:{fiji_version}'
-        ij = imagej.init(fiji, mode='interactive')
-        # ij = imagej.init('sc.fiji:fiji:2.5.0', mode='interactive')
-        for imagepath in tqdm(imagepaths):
-
-            args = {'imagepath': os.path.abspath(imagepath)}
-            try:
-                logging.basicConfig(level=logging.ERROR)
-                with redirect_stdout(os.devnull), redirect_stderr(os.devnull):
-                    result = ij.py.run_macro(macro, args)
-            except Exception as e:
-                print(e)
-            results.append(str(result.getOutput('results')).split('\t'))
-            print(
-                f'{os.path.basename(imagepath)} was processed')
-            pass
-
-        with open(os.path.join(outputDir, f'DotCounts_{time.time_ns()}.csv'), 'w', encoding='utf-8', newline='\n') as f:
-            writer = csv.writer(f, delimiter='\t')
-            header = ['Image Name',
+default_header = ['Image Name',
                       'Directory Path',
                       'Dot Maxima',
                       'Tissue Area (um^2)',
@@ -116,12 +82,81 @@ def getcounts(inputdir: str, outputdir: str, fiji_version: str = 'native'):
                       'Dots per um^2',
                       'Identified area to image size ratio (for QC)'
                       ]
-            writer.writerow(header)
-            writer.writerows(results)
-            f.close()
-            pass
 
-        print(f'Processes finished in {time.perf_counter() - start: .2f} seconds.')
+
+def getcounts(inputdir: str | os.PathLike, outputdir: str | os.PathLike, algorithm: Literal['opencv' | 'imagej'] = 'opencv', header: list = default_header, **kwargs):
+    if algorithm == 'opencv':
+        pass
+    elif algorithm == 'imagej':
+        keys = kwargs.keys()
+        new_kwargs = {}
+        if 'fiji_version' in keys:
+            new_kwargs['fiji_version'] = keys['fiji_version']
+        if 'macro' in keys:
+            new_kwargs['macro'] = keys['macro']
+        results = _batch_getcounts_imagej(inputdir, **new_kwargs)
+        pass
+    else:
+        raise ValueError(f'Invalid value for *algorithm*!')
+    _write(results, outputdir, header=header)
+    pass
+
+def _getcounts_imagej(imagepath: str | os.PathLike, imagej_object: Any | None = None, fiji_version: str | None = None, macro: str = default_macro) -> list:
+    if not imagej_object:
+        if fiji_version:
+            fiji = r'E:\Aaron Y\Fiji.app' if fiji_version == 'native' else f'sc.fiji:fiji:{fiji_version}'
+            ij = imagej.init(fiji, mode='interactive')
+        else:
+            raise KeyError(f'A version for *fiji_version* must be specified if a PyImageJ handler is not supplied!')
+    else:
+        ij = imagej_object
+    args = {'imagepath': os.path.abspath(imagepath)}
+        try:
+            logging.basicConfig(level=logging.ERROR)
+            with redirect_stdout(os.devnull), redirect_stderr(os.devnull):
+                result = ij.py.run_macro(default_macro, args)
+        except Exception as e:
+            print(e)
+    return list(str(result.getOutput('results')).split('\t'))
+
+
+def _batch_getcounts_imagej(inputdir: str | os.PathLike, fiji_version: str = 'native', macro: str = default_macro) -> list:
+    inputDir = os.path.abspath(inputdir)
+    
+    # Ensure input and output are properly defined
+    if inputDir != '':
+        imagepaths = [image
+                      for root, dirs, files in os.walk(inputDir)
+                      for image in glob(os.path.join(root, '*.[Tt][Ii][Ff]'))
+                      if not os.path.islink(image)]
+        if len(imagepaths) == 0:
+            raise ValueError(f'*inputdir* is not properly defined!')
+        
+        results = []
+        fiji = r'E:\Aaron Y\Fiji.app' if fiji_version == 'native' else f'sc.fiji:fiji:{fiji_version}'
+        ij = imagej.init(fiji, mode='interactive')
+        # ij = imagej.init('sc.fiji:fiji:2.5.0', mode='interactive')
+        for imagepath in tqdm(imagepaths):
+            try:
+                logging.basicConfig(level=logging.ERROR)
+                with redirect_stdout(os.devnull), redirect_stderr(os.devnull):
+                    result = _getcounts_imagej(imagepath, imagej_object=ij, macro=macro)
+            except Exception as e:
+                print(e)
+                result = None
+            finally:
+                results.append(result)
+    else:
+        raise ValueError(f'*inputdir* is not properly defined!')
+    return results
+
+
+def _write(results: list | Any, outputdir: str | os.PathLike, header: list = default_header, delimiter: str = '\t'):
+    with open(os.path.join(outputDir, f'Counts_{time.time_ns()}.csv'), 'w', encoding='utf-8', newline='\n') as f:
+        writer = csv.writer(f, delimiter=delimiter)
+        writer.writerow(header)
+        writer.writerows(results)
+        f.close()
         pass
     pass
 
