@@ -52,7 +52,7 @@ Relative RNAscope counts can be obtained using `getcounts` function which utiliz
 ```
 from ImageProcessing.src.RNAscope import getcounts
 
-getcounts(inputDir, outputDir)
+getcounts(inputDir, outputDir, algorithm='imagej')
 ```
 
 ### Colocalization
