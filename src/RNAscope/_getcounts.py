@@ -183,19 +183,29 @@ def _getcounts_opencv(imagepath: str | os.PathLike, save_threshold_image_dir: st
                 raise KeyError(f'Must specify a channel for maxima identification!')
             units_keys = ['xResolution_tag', 'yResolution_tag', 'ResolutionUnit_tag', 'collapse_resolutions']
             units_kwargs = {k: v for k, v in kwargs.items() if k in units_keys}
+            options_keys = ['options_size', 'iterations']
+            options_kwargs = {k: v for k, v in kwargs.items() if k in options_keys}
         
             # Threshold the image on the selected channel
             threshold_array = threshold_huang(imagepath, **threshold_kwargs)
+            # Use Particle Analyzer to get standard tissue outlines
+            analyzer = ParticleAnalyzer(**particleanalyzer_kwargs)
+            # Dilate and close to connect any difficult areas and ensure the tissue it enclosing itself
+            threshold_array = analyzer.options(threshold_array, option='dilate', **options_kwargs)  # Dilate
+            threshold_array = analyzer.options(threshold_array, option='dilate', **options_kwargs)  # Close
             if save_threshold_image_dir:
                 filename = os.path.basename(imagepath)
                 filebase, ext = os.path.splitext(filename)
                 newfilepath = os.path.join(save_threshold_image_dir, f'{filebase}_THRESHOLD{ext}')
                 Image.fromarray(threshold_array).save(newfilepath)
                 pass
-            # Use Particle Analyzer to get standard tissue outlines
-            # Dilate and close to connect any difficult areas and ensure the tissue it enclosing itself
-            # Use Particle Analyzer to get the new threshold matrix
+            # Use Particle Analyzer to get the tissues in new threshold matrix
+            # might not have to. might not be able to get area using cv2.KeyPoints
+            # instead try just counting nonzero pixels?
+            # particles = analyzer.detect(threshold_array)
             # Get tissue area
+            tissue_pixels = np.count_nonzero(thresholdarray)
+            tissue_area = convert_pixel_to_area(tissue_pixels, image=imagepath, **units_kwargs)
             # Get image area
             image_height, image_width = image_size_microns(imagepath, **units_kwargs)
             # Get dot counts
@@ -205,7 +215,7 @@ def _getcounts_opencv(imagepath: str | os.PathLike, save_threshold_image_dir: st
             result[0] = os.path.basename(imagepath) #Image name
             result[1] = os.path.dirname(imagepath)  #Image path
             result[2] = num_maxima                  #Dot Count
-            result[3] = '' #Tissue area
+            result[3] = tissue_area                 #Tissue area
             result[4] = image_height * image_width  #Image Area
             result[5] = result[2] / result[3]       #Dots per unit area
             result[6] = result[3] / result[4]       #Tissue to image area ratio (for QC)
