@@ -6,7 +6,7 @@ import tifffile as tiff
 
 def threshold_huang(
         image: os.PathLike | str,
-        color_channel: int | str,
+        threshold_channel: int | str,
         tile_size: tuple[int, int] | None = None,
         white_background: bool = True
 ) -> np.ndarray:
@@ -14,23 +14,23 @@ def threshold_huang(
 
     :param white_background:
     :param image:
-    :param color_channel:
+    :param threshold_channel:
     :param tile_size:
     :return:
     """
-    if isinstance(color_channel, str):
+    if isinstance(threshold_channel, str):
         colors = {
             'red': 0,
             'green': 1,
             'blue': 2
         }
-        channel = colors[color_channel]
+        channel = colors[threshold_channel]
         pass
-    elif isinstance(color_channel, int):
-        channel = color_channel
+    elif isinstance(threshold_channel, int):
+        channel = threshold_channel
         pass
     else:
-        raise TypeError(f'Invalid type for param *color_channel* in ImageJ.threshold: {color_channel.__class__}')
+        raise TypeError(f'Invalid type for param *threshold_channel* in ImageJ.threshold: {threshold_channel.__class__}')
 
     # get shape of array
     shape = tiff.TiffFile(image).pages[0].shape
