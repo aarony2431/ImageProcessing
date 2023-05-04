@@ -85,7 +85,7 @@ class ParticleAnalyzer():
     
     
     @keypoints.setter
-    def keypoints(self, value: cv2.KeyPoints):
+    def keypoints(self, value: list[cv2.KeyPoints]):
         self._keypoints = value
     
     
