@@ -8,6 +8,14 @@ TBD
 
 ## Usage
 
+Several helper functions are provided in the base package. These include
+- `ImageTiff` - a wrapper class for `PIL.Image` and `numpy.ndarray` that allows for streamlined functionality of TIFF images
+- `copy` - a system function used to identically copy the bytes of one file to another location
+- `decompress` - a system function used to naturally decompress any image
+- `subtractmedian` - an image processing function which subtracts the local median intensity from each pixel
+- `processimage` - a single wrapper function for processing and then saving an image using several different image handling libraries
+- `processimage_pool` and `processimage_loop` - batch functions to use with `processimage`
+
 Batch image processing can be performed by importing the `processimage` module and applying it to some image processing function. This function may be a supplied function or a user-defined function. Use the `**kwargs` argument to pass values to any supplied or user-defined function.
 ```
 from ImageProcessing.src import processimage, processimage_loop, processimage_pool
@@ -19,6 +27,16 @@ processimage(func, imagepath, **kwargs)
 processimage_loop(func, imagepaths, logdir=log_file_directory, **kwargs)
 processimage_pool(func, imagepaths, logdir=log_file_directory, **kwargs)
 ```
+
+### ImageJ
+
+Python ports of classic ImageJ functions. Currently contains the following (in no particular order):
+- basic unit conversions using image metadata
+- Find Maxima
+- Threshold (Huang)
+- Analyze Particles (work in progress)
+
+### RNAscope
 
 For RNAscope, please first ensure that the [PyImageJ module](https://github.com/imagej/pyimagej) is installed and activated by using
 ```
@@ -36,6 +54,10 @@ from ImageProcessing.src.RNAscope import getcounts
 
 getcounts(inputDir, outputDir)
 ```
+
+### Colocalization
+
+TBD
 
 ## Contributing
 
