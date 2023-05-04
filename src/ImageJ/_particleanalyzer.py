@@ -101,14 +101,14 @@ class ParticleAnalyzer():
         return keypoints
     
     
-    def options(self, image: str | os.PathLike | np.ndarray, option: Literal['erode' | 'dilate' | 'open' | 'close'], size: int = 1, iterations: int = 1) -> np.ndarray:
+    def options(self, image: str | os.PathLike | np.ndarray, option: Literal['erode' | 'dilate' | 'open' | 'close'], options_size: int = 1, iterations: int = 1) -> np.ndarray:
         morph_options = {
             'erode': cv2.MORPH_ERODE,
             'dilate': cv2.MORPH_DILATE,
             'open': cv2.MORPH_OPEN,
             'close': cv2.MORPH_CLOSE
         }
-        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (size, size))
+        kernel = cv2.getStructuringElement(cv2.MORPH_RECT, (options_size, options_size))
         
         if isinstance(image, (str, os.PathLike)):
             image = cv2.imread(image, cv2.IMREAD_GRAYSCALE)
