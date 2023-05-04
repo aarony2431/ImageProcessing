@@ -8,13 +8,13 @@ from skimage import morphology, filters
 
 
 def FindMaxima(image: np.ndarray | os.PathLike | str | tiff.TiffFile | PIL.Image.Image,
-               color_channel: int | str,
+               maxima_channel: int | str,
                tile_size: tuple[int, int] | None = None,
                noise_tolerance: np.uint8 | int | float | np.uint16 | np.uint32 = np.uint8(20),
                neighborhood_size: int = 3) -> int | ndarray:
     """
     OpenCV/NumPy version of the "Find Maxima" function in ImageJ when used to get strictly the *number* of maxima.
-    :param color_channel:
+    :param maxima_channel:
     :param image:
     :param tile_size:
     :param noise_tolerance:
@@ -23,19 +23,19 @@ def FindMaxima(image: np.ndarray | os.PathLike | str | tiff.TiffFile | PIL.Image
     """
     global data
 
-    if isinstance(color_channel, str):
+    if isinstance(maxima_channel, str):
         colors = {
             'red': 0,
             'green': 1,
             'blue': 2
         }
-        channel = colors[color_channel]
+        channel = colors[maxima_channel]
         pass
-    elif isinstance(color_channel, int):
-        channel = color_channel
+    elif isinstance(maxima_channel, int):
+        channel = maxima_channel
         pass
     else:
-        raise TypeError(f'Invalid type for param *color_channel* in ImageJ.FindMaxima: {color_channel.__class__}')
+        raise TypeError(f'Invalid type for param *maxima_channel* in ImageJ.FindMaxima: {maxima_channel.__class__}')
 
     if isinstance(image, (os.PathLike, str)):
         # Tile the image if tile_size is provided
