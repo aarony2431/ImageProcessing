@@ -90,8 +90,8 @@ default_header = ['Image Name',
 def getcounts(inputdir: str | os.PathLike, outputdir: str | os.PathLike, algorithm: Literal['opencv' | 'imagej'] = 'opencv', header: list = default_header, **kwargs):
     if algorithm == 'opencv':
         opencv_keys = ['save_threshold_image_dir', 'func']
-        opencv_kwargs = {k: v for k, v in kwargs.items() if k in threshold_keys}
-        results = _batch_getcounts_opencv(inputdir, **opencv_kwargs)
+        opencv_kwargs = {k: kwargs.pop(k) for k in opencv_keys if k in kwargs}
+        results = _batch_getcounts_opencv(inputdir, **opencv_kwargs, **kwargs)
         pass
     elif algorithm == 'imagej':
         imagej_keys = ['fiji_version', 'macro']
