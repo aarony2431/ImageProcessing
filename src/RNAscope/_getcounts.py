@@ -241,7 +241,7 @@ def _batch_getcounts_opencv(inputdir: str | os.PathLike, save_threshold_image_di
     
     for imagepath in tqdm(imagepaths):
         try:
-            result = _getcounts_opencv(imagepath, save_threshold_image_dir=save_threshold_image_dir, func=func, **kwargs)
+            result = _getcounts_opencv(imagepath, save_threshold_image_dir=save_threshold_image_dir, **kwargs)
         except Exception as e:
             print(e)
             result = []
