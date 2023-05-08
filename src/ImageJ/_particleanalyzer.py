@@ -104,10 +104,10 @@ class ParticleAnalyzer:
         return self._keypoints
 
     @keypoints.setter
-    def keypoints(self, value: list[cv2.KeyPoints]):
+    def keypoints(self, value: list):
         self._keypoints = value
 
-    def detect(self, image: str | os.PathLike | np.ndarray, update_keypoints: bool = True) -> list[cv2.KeyPoints]:
+    def detect(self, image: str | os.PathLike | np.ndarray, update_keypoints: bool = True) -> list:
         if isinstance(image, (str, os.PathLike)):
             image = cv2.imread(image, cv2.IMREAD_GRAYSCALE)
         elif not isinstance(image, np.ndarry):

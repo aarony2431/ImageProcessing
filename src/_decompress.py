@@ -12,19 +12,26 @@ from PIL import Image
 from tqdm import tqdm
 
 
-def decompress(input_file: str | os.PathLike, output_dir: str | os.PathLike, chunk_size=int(2**22), use_tqdm=True) -> str:
+def decompress(input_file: str | os.PathLike,
+               output_dir: str | os.PathLike | None = None,
+               /,
+               *,
+               chunk_size=int(2**22),
+               use_tqdm=True) -> str:
     filename = basename(input_file)
-    os.makedirs(output_dir, exist_ok=True)
+    if not output_dir:
+        output_dir = dirname(input_file)
+    else:
+        os.makedirs(output_dir, exist_ok=True)
     filebase, ext = [splitext(filename)[0], '.tif']
     output_file = f"{join(output_dir, filebase)}_UNCOMPRESSED{ext}"
 
     with open(input_file, 'rb') as f_in:
         mm = mmap.mmap(f_in.fileno(), 0, access=mmap.ACCESS_READ)
-        # mm_current_pos = 0
         shape = tifffile.TiffFile(f_in).pages[0].shape
         if not exists(output_file):
             with tifffile.TiffWriter(output_file, bigtiff=True) as file:
-                file.write(np.zeros(shape=shape, dtype=np.uint8), shape=shape, dtype=np.dtype(np.uint8))
+                file.write(shape=shape, dtype=np.dtype(np.uint8))
                 pass
             pass
         with open(output_file, 'r+b') as f_out:
@@ -49,9 +56,17 @@ def decompress(input_file: str | os.PathLike, output_dir: str | os.PathLike, chu
     return output_file
 
 
-def copy(src_file_path: str | os.PathLike, dest_dir: str | os.PathLike, chunk_size=1024, use_tqdm=True) -> str:
+def copy(src_file_path: str | os.PathLike,
+         dest_dir: str | os.PathLike | None = None,
+         /,
+         *,
+         chunk_size=1024,
+         use_tqdm=True) -> str:
     filename = basename(src_file_path)
-    os.makedirs(dest_dir, exist_ok=True)
+    if not dest_dir:
+        dest_dir = dirname(src_file_path)
+    else:
+        os.makedirs(dest_dir, exist_ok=True)
     if dirname(src_file_path) == dest_dir:
         filebase, ext = splitext(filename)
         filename = f'{filebase}_COPY{ext}'
@@ -74,9 +89,17 @@ def copy(src_file_path: str | os.PathLike, dest_dir: str | os.PathLike, chunk_si
     return copy_file
 
 
-def copy_image(src_image: str | os.PathLike, dest: str | os.PathLike, tile_size: int | None = 1024, use_tqdm=True) -> str:
+def copy_image(src_image: str | os.PathLike,
+               dest: str | os.PathLike | None = None,
+               /,
+               *,
+               tile_size: int | None = 1024,
+               use_tqdm=True) -> str:
     filename = basename(src_image)
-    os.makedirs(dest, exist_ok=True)
+    if not dest:
+        dest = dirname(src_image)
+    else:
+        os.makedirs(dest, exist_ok=True)
     if dirname(src_image) == dest:
         filebase, ext = splitext(filename)
         filename = f'{filebase}_COPY{ext}'
@@ -86,37 +109,37 @@ def copy_image(src_image: str | os.PathLike, dest: str | os.PathLike, tile_size:
         copy_file = join(dest, filename)
     shape = tifffile.TiffFile(src_image).pages[0].shape
     with tifffile.TiffWriter(copy_file, bigtiff=True) as tiff:
-        tiff.write(np.zeros(shape=shape, dtype=bool), shape=shape, dtype='bool')
-    with np.memmap(src_image, dtype=np.dtype(np.uint8), mode='r', shape=shape) as src_memmap:
-        with np.memmap(copy_file, dtype=np.dtype(np.uint8), mode='r+', shape=shape) as out_memmap:
-            if tile_size:
-                height, width = (shape[0], shape[1])
-                tiles_tall = np.arange(0, height, tile_size)
-                tiles_wide = np.arange(0, width, tile_size)
-                tqdm_iter = np.ndindex(len(tiles_tall), len(tiles_wide))
-                if use_tqdm:
-                    total = len(tiles_tall) * len(tiles_wide)
-                    for [y, x] in tqdm(tqdm_iter, total=total, unit='tile', desc='Copying image contents'):
-                        start_height, start_width = (y * tile_size, x * tile_size)
-                        end_height, end_width = (start_height + tile_size, start_width + tile_size)
-                        tile = src_memmap[start_height:end_height, start_width:end_width, ...]
-                        out_memmap[start_height:end_height, start_width:end_width, ...] = tile
-                        pass
-                    pass
-                else:
-                    for [y, x] in tqdm_iter:
-                        start_height, start_width = (y * tile_size, x * tile_size)
-                        end_height, end_width = (start_height + tile_size, start_width + tile_size)
-                        tile = src_memmap[start_height:end_height, start_width:end_width, ...]
-                        out_memmap[start_height:end_height, start_width:end_width, ...] = tile
-                        pass
-                    pass
+        tiff.write(shape=shape, dtype='bool')
+    src_memmap = np.memmap(src_image, dtype=np.dtype(np.uint8), mode='r', shape=shape)
+    out_memmap = np.memmap(copy_file, dtype=np.dtype(np.uint8), mode='r+', shape=shape)
+    if tile_size:
+        height, width = (shape[0], shape[1])
+        tiles_tall = np.arange(0, height, tile_size)
+        tiles_wide = np.arange(0, width, tile_size)
+        tqdm_iter = np.ndindex(len(tiles_tall), len(tiles_wide))
+        if use_tqdm:
+            total = len(tiles_tall) * len(tiles_wide)
+            for [y, x] in tqdm(tqdm_iter, total=total, unit='tile', desc='Copying image contents'):
+                start_height, start_width = (y * tile_size, x * tile_size)
+                end_height, end_width = (start_height + tile_size, start_width + tile_size)
+                tile = src_memmap[start_height:end_height, start_width:end_width, ...]
+                out_memmap[start_height:end_height, start_width:end_width, ...] = tile
                 pass
-            else:
-                out_memmap[...] = src_memmap[...]
+            pass
+        else:
+            for [y, x] in tqdm_iter:
+                start_height, start_width = (y * tile_size, x * tile_size)
+                end_height, end_width = (start_height + tile_size, start_width + tile_size)
+                tile = src_memmap[start_height:end_height, start_width:end_width, ...]
+                out_memmap[start_height:end_height, start_width:end_width, ...] = tile
+                out_memmap.flush()
                 pass
-            out_memmap.flush()
-            del out_memmap
-        del src_memmap
+            pass
         pass
+    else:
+        out_memmap[...] = src_memmap[...]
+        pass
+    out_memmap.flush()
+    del out_memmap
+    del src_memmap
     return copy_file
