@@ -30,8 +30,8 @@ def _test_maxima():
 
     # Find Maxima tests
     chunk_size = int(2 ** 14)
-    assert 639082 == FindMaxima(image_path, color_channel='red', noise_tolerance=1.0)
-    assert 639116 == FindMaxima(image_path, color_channel='red', noise_tolerance=1.0,
+    assert 639082 == FindMaxima(image_path, maxima_channel='red', noise_tolerance=1.0)
+    assert 639116 == FindMaxima(image_path, maxima_channel='red', noise_tolerance=1.0,
                                 tile_size=(chunk_size, chunk_size))
     pass
 
@@ -44,7 +44,7 @@ def _test_threshold():
     image_path = join(folder_path, test_image)
 
     # Threshold test
-    thresholded_image_array = threshold_huang(image_path, color_channel='blue')
+    thresholded_image_array = threshold_huang(image_path, threshold_channel='blue')
     assert 92304771 == np.count_nonzero(thresholded_image_array)
     assert np.round(5732015.582172504) == np.round(convert_pixel_to_area(np.count_nonzero(thresholded_image_array),
                                                                          image=image_path))

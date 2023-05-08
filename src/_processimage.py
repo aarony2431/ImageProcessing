@@ -112,7 +112,7 @@ def processimage(func: Callable,
             # Slow but tries to lower the amount of memory usage
             try:
                 # Copy and decompress file to output directory for modification
-                out_file = decompress(imagepath, out, library='')
+                out_file = decompress(imagepath, out)
 
                 # Open the input file and read its dimensions
                 shape = tifffile.TiffFile(out_file).pages[0].shape
@@ -160,7 +160,7 @@ def processimage(func: Callable,
             # Slow but tries to lower the amount of memory usage
             try:
                 # Copy and decompress file to output directory for modification
-                out_file = decompress(imagepath, out, library='')
+                out_file = decompress(imagepath, out)
 
                 image = np.memmap(out_file, mode='r+', dtype=np.uint8)
                 shape = tifffile.TiffFile(out_file).pages[0].shape

@@ -77,7 +77,7 @@ def copy(src_file_path: str | os.PathLike, dest_dir: str | os.PathLike, chunk_si
 def copy_image(src_image: str | os.PathLike, dest: str | os.PathLike, tile_size: int | None = 1024, use_tqdm=True) -> str:
     filename = basename(src_image)
     os.makedirs(dest, exist_ok=True)
-    if dirname(src_image) == dest_dir:
+    if dirname(src_image) == dest:
         filebase, ext = splitext(filename)
         filename = f'{filebase}_COPY{ext}'
     if isfile(dest):
@@ -86,7 +86,7 @@ def copy_image(src_image: str | os.PathLike, dest: str | os.PathLike, tile_size:
         copy_file = join(dest, filename)
     shape = tifffile.TiffFile(src_image).pages[0].shape
     with tifffile.TiffWriter(copy_file, bigtiff=True) as tiff:
-        file.write(np.zeros(shape=shape, dtype=bool), shape=shape, dtype=bool)
+        tiff.write(np.zeros(shape=shape, dtype=bool), shape=shape, dtype='bool')
     with np.memmap(src_image, dtype=np.dtype(np.uint8), mode='r', shape=shape) as src_memmap:
         with np.memmap(copy_file, dtype=np.dtype(np.uint8), mode='r+', shape=shape) as out_memmap:
             if tile_size:
