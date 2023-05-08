@@ -1,7 +1,7 @@
 from os.path import dirname, join, getsize
 from os import remove
 
-from ..src import decompress, copy
+from ..src import decompress, copy, copy_image
 
 
 def test_decompress():
@@ -18,4 +18,6 @@ def test_decompress():
     decompress_file = decompress(image_path, folder_path)
     assert 670433680 == getsize(decompress_file)
     remove(decompress_file)
+    copy_image_file = copy_image(image_path, folder_path)
+    assert 670433680 == getsize(copy_image_file)
     pass
