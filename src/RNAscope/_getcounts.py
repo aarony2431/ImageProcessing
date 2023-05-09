@@ -262,8 +262,12 @@ def _getcounts_opencv(imagepath: str | os.PathLike,
     return list(result)
 
 
-def _batch_getcounts_opencv(inputdir: str | os.PathLike, save_threshold_image_dir: str | os.PathLike | None = None,
-                            func: Callable | None = None, **kwargs) -> list:
+def _batch_getcounts_opencv(inputdir: str | os.PathLike, 
+                            /,
+                            *,
+                            save_threshold_image_dir: str | os.PathLike | None = None,
+                            func: Callable | None = None, 
+                            **kwargs) -> list:
     inputDir = os.path.abspath(inputdir)
 
     # Ensure input and output are properly defined
