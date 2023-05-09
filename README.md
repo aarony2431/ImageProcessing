@@ -50,7 +50,7 @@ getcounts(inputDir, outputDir, algorithm='imagej', **kwargs)
 A detailed description of the valid `**kwargs` is below.
 
 **OpenCV and Python**
-- if the user supplies the keyword argument `func`, all other `kwargs` will be passed to `func`
+- if the user supplies the keyword argument `func`, all other `kwargs` will be passed to `func` and all images will be processed only with `func` and using `kwargs`
 - To be supplied to `threshold_huang()`:
   - `threshold_channel`: the channel number or color to be used for thresholding
   - `tile_size`: a tuple specifying the size of the tile to be used if tiling of the image is desired
