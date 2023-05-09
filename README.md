@@ -1,6 +1,8 @@
 # ImageProcessing
 
-**ImageProcessing** is a Python library designed to automate batch-scale processing and analysis of large TIFF images. The **ImageProcessing** methods are designed for use with immunofluorescence images on black backgrounds, especially [RNAscope](https://acdbio.com/rnascope%E2%84%A2-basescope%E2%84%A2-and-mirnascope%E2%84%A2assays). The **ImageProcessing** module contains loop- and multiprocessing-based methods to automate any method used to process images, and contains methods to process images for RNAscope and colocalization using several well known methods such as [Costes](https://imagej.net/media/costes-etalcoloc.pdf), [Pearson's and Mander's Correlation Coefficients](https://imagej.net/media/manders.pdf), and [median subtraction](https://en.wikipedia.org/wiki/Median_filter).
+**ImageProcessing** is a Python library designed to automate batch-scale processing and analysis of large TIFF images. The **ImageProcessing** methods are designed for use with immunofluorescence images on black backgrounds or punctate dots on white background, histology images, especially [RNAscope](https://acdbio.com/rnascope%E2%84%A2-basescope%E2%84%A2-and-mirnascope%E2%84%A2assays). The **ImageProcessing** module contains loop- and multiprocessing-based methods to automate any method used to process images, and contains methods to process images for RNAscope and colocalization using several well known methods such as [Costes](https://imagej.net/media/costes-etalcoloc.pdf), [Pearson's and Mander's Correlation Coefficients](https://imagej.net/media/manders.pdf), and [median subtraction](https://en.wikipedia.org/wiki/Median_filter).
+
+Recently, **ImageProcessing** has been upgraded to include some Python functionalities of standard [ImageJ](https://imagej.net) functions to circumvent memory limitations of [PyImageJ](https://github.com/imagej/pyimagej). This includes other image manipulation helper functions.
 
 ## Installation
 
