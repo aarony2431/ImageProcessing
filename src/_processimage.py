@@ -21,6 +21,8 @@ from ._decompress import decompress, copy
 
 def processimage(func: Callable,
                  imagepath: str,
+                 /,
+                 *,
                  isbgr=False,
                  out=None,
                  hierarchy_inputDir=None,
@@ -261,6 +263,8 @@ def processimage(func: Callable,
 
 def processimages_loop(func: Callable,
                        imagepaths: list[str],
+                       /,
+                       *,
                        logdir=Optional[str],
                        **kwargs):
     if logdir:
@@ -296,6 +300,8 @@ def processimages_loop(func: Callable,
 
 def processimages_pool(func: Callable,
                        imagepaths: list[str],
+                       /,
+                       *,
                        processes=2,
                        chunksize=None,
                        aSync=False,
