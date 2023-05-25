@@ -53,6 +53,8 @@ A detailed description of the valid `**kwargs` is below.
 
 **OpenCV and Python**
 - if the user supplies the keyword argument `func`, all other `kwargs` will be passed to `func` and all images will be processed only with `func` and using `kwargs`
+- To be supplied to `_batch_getcounts_opencv` and `_getcounts_opencv`
+  -  `save_threshold_image_dir`: a boolean indicating if the thresholded images are to be saved
 - To be supplied to `threshold_huang()`:
   - `threshold_channel`: the channel number or color to be used for thresholding
   - `tile_size`: a tuple specifying the size of the tile to be used if tiling of the image is desired
@@ -78,6 +80,8 @@ A detailed description of the valid `**kwargs` is below.
   - `ResolutionUnit_tag`: the tag name or number for the Resolution Units in metadata (default 296)
   - `collapse_resolutions`: a boolean indicating whether or not to average the Resolution Units in the X and Y directions or keep them separated
 
+
+
 **PyImageJ**
 - `fiji_version`: a string representing the version of fiji to use (default is the computer's `'native'`)
 - `macro`: the ImageJ macro to be performed, written in the ImageJ Macro language (default macro is already supplied)
@@ -96,6 +100,90 @@ pip install pyimagej
 ### Colocalization
 
 TBD
+
+### Examples
+
+**Batch processing images for H&E RNAscope processing and analysis:**
+```
+from ImageProcessing.src import processimage_pool
+from ImageProcessing.src.RNAscope import thresholdchannel
+
+inputDir = ...
+outputDir = ...
+imagepaths = [image
+              for root, dirs, files in os.walk(inputDir)
+              for image in glob(join(root, '*.[Tt][Ii][Ff]'))
+              if not islink(image)]
+
+# The kwargs to supplied to the function, thresholdchannel
+kwargs = {
+  'mainchannel': 'red',
+  'C2channel': 'green',
+  'C3channel': 'blue',
+  'whitebackground': True,
+  'loop': False
+}
+
+# Set the maximum number of processes to avoid overclocking
+processes = len(psutil.Process().cpu_affinity()) - 1
+
+processimages_pool(thresholdchannel,
+                   imagepaths,
+                   processes=processes,
+                   chunksize=10,
+                   logdir=outputDir,
+                   out=outputDir,
+                   isbgr=False,
+                   heirarchy_inputDir=inputDir,
+                   tilesize=1024,
+                   image_library='memmap_fast',
+                   **kwargs)
+```
+
+Every image in the directory and subdirectories of `inputDir` is analyzed and the processed images and log files are outputted into `outputDir`, maintaing the hierarchy of the original directory. The image is assumed to be an RGB image, where the channel of interest is _red_, the secondary channel is _green_, and the tertiary channel is _blue_, and the image is a brightfield image with a light background. The images will be processed in tiles of size 1024x1024 using a fast version of `np.memmap`.
+
+```
+from ImageProcessing.src.RNAscope import getcounts
+
+inputDir = processedimageDir
+outputDir = resultsDir
+
+kwargs = {
+  # OpenCV kwargs
+  'save_threshold_image_dir' = True,
+  
+  # Huang thresholding kwargs
+  'threshold_channel' = 'blue',  # required kwarg!!!
+  # 'tile_size' = 1024,
+  'white_background' = True,
+  
+  # ParticleAnalyzer kwargs
+  # 'area': (10, 1000000),
+  # 'threshold': (0, 255),
+  # 'circularity': (0.1, 1.0),
+  # 'convexity': (0.87, 1.0),
+  # 'inertia_ratio': (0.1, 1.0),
+  
+  # FindMaxima kwargs
+  'maxima_channel' = 'red',   # required kwarg!!!
+  'tile_size' = (16384, 16384),
+  'noise_tolerance' = 1.0,
+  'neighborhood_size' = 3,
+  
+  # Unit conversion kwargs
+  # 'xResolution_tag' = 282,
+  # 'yResolution_tag' = 283,
+  # 'ResolutionUnit_tag' = 296,
+  # 'collapse_resolutions' = True,
+  
+  # Binary Options kwargs
+  # 'options_size' = 1,
+  'iterations' = 3
+}
+getcounts(inputDir, outputDir, algorithm='opencv', **kwargs)
+```
+
+Each of the processed images from the previous output is processed in batch. The images will each be thresholded using Huang's thresholding method on the _blue_ channel, without tiling and assuming the the image is a light background image. The ParticleAnalyzer and UnitConverters are used with default parameters. BinaryOptions are iterated 3 times on the Huang-thresholded images to generate the resulting images which will be saved in `outputDir` based on the `save_threshold_image_dir` flag and used to calculate the total sample area. Local image maxima are identified on the _red_ channel with a base value of at least 1.0 using the neighbors in a 3x3 centered square, using a tiled approach of 16384x16384 tiles. Local image measurements are outputted as _imagename, imagepath, number of maxima, tissue area, image area, dots per unit area, tissue to image ratio_ as a `.csv` file in `outputDir`.
 
 ## Contributing
 
