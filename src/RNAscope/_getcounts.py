@@ -213,7 +213,7 @@ def _getcounts_opencv(imagepath: str | os.PathLike,
             particleanalyzer_keys = ['area', 'threshold', 'threshold_step', 'circularity', 'convexity', 'inertia_ratio']
             particleanalyzer_kwargs = {k: v for k, v in kwargs.items() if k in particleanalyzer_keys}
             findmaxima_keys = ['maxima_channel', 'tile_size', 'noise_tolerance', 'neighborhood_size']
-            findmaxima_kwargs = {k: v for k, v in kwargs.items() if k in particleanalyzer_kwargs}
+            findmaxima_kwargs = {k: v for k, v in kwargs.items() if k in findmaxima_keys}
             if 'maxima_channel' not in findmaxima_kwargs.keys():
                 raise KeyError(f'Must specify a channel for maxima identification!')
             units_keys = ['xResolution_tag', 'yResolution_tag', 'ResolutionUnit_tag', 'collapse_resolutions']
@@ -225,7 +225,7 @@ def _getcounts_opencv(imagepath: str | os.PathLike,
             threshold_array = threshold_huang(imagepath, **threshold_kwargs)
             # Use Particle Analyzer to get standard tissue outlines
             analyzer = ParticleAnalyzer(**particleanalyzer_kwargs)
-            # Dilate and close to connect any difficult areas and ensure the tissue it enclosing itself
+            # Dilate and close to connect any difficult areas and ensure the tissue is enclosing itself
             threshold_array = options(threshold_array, option='dilate', **options_kwargs)  # Dilate
             threshold_array = options(threshold_array, option='dilate', **options_kwargs)  # Close
             if save_threshold_image_dir:
@@ -282,7 +282,10 @@ def _batch_getcounts_opencv(inputdir: str | os.PathLike,
         for imagepath in tqdm(imagepaths):
             result = []
             try:
-                result = _getcounts_opencv(imagepath, save_threshold_image_dir=save_threshold_image_dir, **kwargs)
+                result = _getcounts_opencv(imagepath,
+                                           save_threshold_image_dir=save_threshold_image_dir,
+                                           func=func,
+                                           **kwargs)
             except Exception as e:
                 print(e)
             finally:
