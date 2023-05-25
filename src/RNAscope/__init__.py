@@ -1,2 +1,2 @@
 from ._thesholdchannel import *
-from ._getcounts import *
+from ._getcounts import getcounts
